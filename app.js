@@ -194,9 +194,6 @@
               <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:6px;">
                 Belum punya akun pegawai? <a href="#" id="linkToReg" style="color:var(--primary);font-weight:700;">Daftar di sini</a>
               </div>
-              <div class="memo-box" style="margin-top:10px;margin-bottom:0;font-size:12px;">
-                <strong>Akun Admin Default:</strong> Username <code>admin</code> / Password <code>admin123</code> (setelah menjalankan <code>supabase-schema.sql</code>).
-              </div>
             </div>
           `
               : `
