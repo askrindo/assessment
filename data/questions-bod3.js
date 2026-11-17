@@ -10,127 +10,222 @@ window.DATA_BOD3 = {
   ],
   potrai: [
     {
-      id: "bod3-p1",
-      unit: "Underwriting & Klaim",
-      title: "Penyeimbangan Loss Ratio KUR & Ekspansi Suretyship / Non-KUR",
+      id: "bod3-uw1",
+      units: ["Underwriting", "Technical Head"],
+      unit: "Underwriting / Technical Head",
+      title: "Pengetatan Seleksi Risiko Suretyship & Kapasitas Treaty Reasuransi",
       durationSec: 1800,
       email: {
-        from: "Direktur Manajemen Risiko & Bisnis <direksi@asuransi-kredit.co.id>",
-        subject: "URGENT: Kenaikan Loss Ratio KUR (89%) & Permintaan Relaksasi SLA Bank Mitra",
-        body: `<p>Rekan Kadiv/Kawil, dalam 3 kuartal terakhir <em>Gross Loss Ratio</em> KUR naik dari 68% menjadi 89% sementara subrogasi baru 18%. Di sisi lain, premi Non-KUR ditargetkan tumbuh +35% YoY untuk menjaga RBC &gt; 180%. Pagi ini EVP Bank Mitra Utama meminta SLA klaim KUR dipercepat dari 14 hari menjadi 5 hari kerja dengan pelonggaran verifikasi. Mohon balasan keputusan Anda.</p>`
+        from: "Direktur Teknik <dirtek@asuransi-kredit.co.id>",
+        subject: "Evaluasi Kapasitas Treaty Suretyship & Proyek Infrastruktur Risiko Tinggi",
+        body: `<p>Rekan Kadiv/Technical Head, rasio klaim Suretyship proyek konstruksi swasta naik ke 58% karena beberapa kontraktor mengalami gagal bayar termin. Di sisi lain, ada pengajuan <em>Performance Bond</em> Rp 85 Miliar yang melebihi kapasitas treaty otomatis. Mohon keputusan underwriting &amp; strategi penempatan reasuransi fakultatifnya.</p>`
+      },
+      chat: {
+        partnerName: "Broker / Pimpinan Reasuransi (AI Roleplay)",
+        opening: "Selamat pagi. Untuk risiko Rp 85 Miliar ini, kami hanya bersedia masuk 40% jika ada counter-guarantee aset likuid minimal 50%.",
+        followUp: "Jika aset masih berupa sertifikat tanah non-likuid, apa mitigasi tambahan yang Anda tawarkan agar kami tetap mau cover?"
+      },
+      call: {
+        partnerName: "Kepala Bagian Underwriting (Virtual Call)",
+        prompt: "Berikan arahan teknis mengenai pengetatan skoring kontraktor, limit single obligor, dan syarat agunan balik."
+      },
+      documents: {
+        title: "Dokumen Analisa Bisnis: Revisi Pedoman Underwriting Suretyship",
+        brief: "Susun matriks limit kewenangan underwriting, skema retensi vs fakultatif, dan kriteria kontraktor layak jamin."
+      },
+      aiHints: [
+        { q: "Alternatif agunan likuid", a: "Kombinasikan blokir deposito/bank garansi 25% + pengikatan fidusia/escrow account termin proyek dari obligee." }
+      ],
+      keywords: ["treaty", "fakultatif", "retensi", "counter-guarantee", "escrow", "single obligor", "skoring", "underwriting", "limit"],
+      rubric: ["Ketajaman Analisa Risiko Teknik", "Negosiasi Reasuransi", "Kepemimpinan Underwriting", "Kualitas Pedoman Risiko"],
+      benchmark: "Menempatkan kelebihan kapasitas ke reasuransi fakultatif dengan syarat escrow termin proyek & agunan balik memadai, serta memperketat skoring keuangan kontraktor."
+    },
+    {
+      id: "bod3-kl1",
+      units: ["Klaim", "Technical Head"],
+      unit: "Klaim / Technical Head",
+      title: "Lonjakan Klaim KUR (LR 89%) & Negosiasi Tiered SLA Bank Mitra Utama",
+      durationSec: 1800,
+      email: {
+        from: "Direktur Manajemen Risiko <dirmr@asuransi-kredit.co.id>",
+        subject: "URGENT: Gross Loss Ratio KUR 89% & Tuntutan SLA 5 Hari Bank Mitra",
+        body: `<p>Dalam 3 kuartal terakhir <em>Gross Loss Ratio</em> KUR naik dari 68% ke 89%. Pagi ini EVP Bank Mitra Utama menuntut SLA pembayaran klaim dipercepat dari 14 hari menjadi 5 hari kerja dengan pelonggaran verifikasi dokumen.</p>`
       },
       chat: {
         partnerName: "EVP Bank Mitra Utama (AI Roleplay)",
-        opening: "Selamat pagi Pak/Bu. Jika SLA 5 hari tanpa syarat tidak disetujui minggu ini, kami mempertimbangkan mengalihkan 30% kuota penjaminan KUR ke kompetitor.",
-        followUp: "Baik, saya paham soal tata kelola. Tapi kalau tetap ada verifikasi dokumen, bagaimana kami yakin klaim kami tidak tertahan lama?"
+        opening: "Jika SLA 5 hari tanpa syarat tidak disetujui minggu ini, kami akan alihkan 30% kuota penjaminan KUR ke kompetitor.",
+        followUp: "Kalau tetap ada verifikasi dokumen, bagaimana kami yakin klaim kami tidak tertahan lama?"
       },
       call: {
-        partnerName: "Kepala Bagian Underwriting & Klaim Wilayah (Virtual Call)",
-        prompt: "Bawahan Anda melaporkan tim analis kewalahan menangani backlog klaim KUR dan sekaligus diminta mempercepat Suretyship Rp 50 Miliar. Sampaikan arahan eksekutif Anda."
+        partnerName: "Kepala Bagian Klaim Wilayah (Virtual Call)",
+        prompt: "Tim klaim kewalahan menghadapi backlog 1.200 berkas KUR. Sampaikan strategi triase & otomasi verifikasi Anda."
       },
       documents: {
-        title: "Dokumen Analisa Bisnis: Strategi Portofolio KUR & Non-KUR",
-        brief: "Data: Premi KUR Rp 400 M (Klaim Rp 340 M, Subrogasi Rp 28 M, Biaya Rp 72 M) | Suretyship Rp 150 M (LR 38%) | Asuransi Umum Rp 100 M (LR 55%). Susun analisa bisnis & rencana aksi 90 hari."
+        title: "Dokumen Analisa Bisnis: Transformasi SLA & Kontrol Klaim KUR",
+        brief: "Data: Premi KUR Rp 400 M, Klaim Bruto Rp 340 M, Subrogasi Rp 28 M, Biaya Rp 72 M. Hitung Net Combined Ratio & susun strategi Tiered SLA."
       },
       aiHints: [
-        { q: "Hitung Net Combined Ratio KUR", a: "Klaim Neto = 340 - 28 = Rp 312 M. Net LR = 78%. Expense = 18%. Net Combined Ratio = 96%." },
-        { q: "Ide solusi SLA Bank Mitra", a: "Terapkan Tiered SLA (5 hari khusus klaim digital host-to-host tervalidasi, 14 hari untuk berkas anomali dengan joint-audit)." }
+        { q: "Hitung Net Combined Ratio KUR", a: "Klaim Neto = 312 M (78%). Expense = 18%. Net Combined Ratio = 96%." }
       ],
-      keywords: ["sla", "tiered", "host-to-host", "subrogasi", "rbc", "non-kur", "suretyship", "reasuransi", "audit", "prudential", "delegasi", "komite"],
-      rubric: ["Email: Ketegasan tata kelola & solusi berbasis sistem", "Chat & Call: Negosiasi strategis & kepemimpinan eksekutif", "Documents: Ketajaman angka portofolio", "Integrasi Risiko vs Bisnis (RBC & retensi mitra)"],
-      benchmark: "Menolak pelonggaran tanpa syarat, menawarkan Tiered SLA berbasis host-to-host, mendelegasikan triase ke BOD-4, serta menggenjot Suretyship beragunan solid & proteksi treaty untuk menjaga RBC > 180%."
+      keywords: ["sla", "tiered", "host-to-host", "triase", "sampling", "audit", "combined ratio", "verifikasi", "pks"],
+      rubric: ["Tata Kelola Klaim & Kepatuhan PKS", "Negosiasi SLA Berjenjang", "Efisiensi Operasional Klaim", "Analisa Rasio Portofolio"],
+      benchmark: "Menolak pelonggaran tanpa syarat, menawarkan Tiered SLA (Fast-Track 5 hari khusus berkas digital host-to-host tervalidasi) sambil melakukan joint-audit berkas anomali."
     },
     {
-      id: "bod3-p2",
+      id: "bod3-sub1",
+      units: ["Subrogasi"],
+      unit: "Subrogasi",
+      title: "Strategi Akselerasi Recovery Subrogasi Nasional & Eksekusi Agunan",
+      durationSec: 1800,
+      email: {
+        from: "Direktur Keuangan & Operasional <dirkeu@asuransi-kredit.co.id>",
+        subject: "Realisasi Subrogasi Baru 18% — Perlu Terobosan Strategis Kuartal IV",
+        body: `<p>Total piutang subrogasi KUR &amp; Suretyship mencapai Rp 620 Miliar, namun recovery baru 18%. Sebanyak Rp 240 Miliar berasal dari klaim Suretyship yang agunannya belum dieksekusi karena kendala hukum.</p>`
+      },
+      chat: {
+        partnerName: "Kepala Divisi Hukum & Remedial Bank Mitra (AI Roleplay)",
+        opening: "Kami kesulitan menagih debitur KUR yang sudah hapus buku karena keterbatasan petugas lapangan kami.",
+        followUp: "Jika kita pakai pihak ketiga (agensi penagihan) atau skema keringanan denda, bagaimana pembagian biayanya?"
+      },
+      call: {
+        partnerName: "Kepala Bagian Subrogasi Pusat (Virtual Call)",
+        prompt: "Arahkan pemetaan portofolio subrogasi berbasis klaster (Pareto nilai besar vs ritel) dan target eksekusi agunan."
+      },
+      documents: {
+        title: "Dokumen Analisa Bisnis: Roadmap Recovery Subrogasi +15% YoY",
+        brief: "Rancang skema segmentasi piutang subrogasi, kerja sama tim hukum/balai lelang, dan insentif penagihan berbasis recovery."
+      },
+      aiHints: [
+        { q: "Prioritas eksekusi piutang Rp 620 M", a: "Fokuskan tim hukum pada Rp 240 M klaim Suretyship beragunan (quick-win nilai besar) dan digitalisasi reminder/keringanan pokok untuk klaster KUR mikro." }
+      ],
+      keywords: ["subrogasi", "recovery", "pareto", "agunan", "eksekusi", "lelang", "bank mitra", "hukum", "restrukturisasi", "klaster"],
+      rubric: ["Strategi Recovery Berbasis Nilai", "Sinergi Hukum & Perbankan", "Inovasi Penagihan", "Proyeksi Dampak Kas"],
+      benchmark: "Mengelompokkan piutang secara Pareto: akselerasi eksekusi/lelang agunan Suretyship Rp 240M melalui tim hukum, dan skema restrukturisasi/digital collection bersama Bank Mitra untuk KUR."
+    },
+    {
+      id: "bod3-keu1",
+      units: ["Keuangan"],
+      unit: "Keuangan",
+      title: "Manajemen Likuiditas Klaim, Cadangan Teknis PSAK 74, & Kesehatan RBC",
+      durationSec: 1800,
+      email: {
+        from: "Direktur Keuangan <dirkeu@asuransi-kredit.co.id>",
+        subject: "Tekanan Arus Kas Pembayaran Klaim KUR & Proyeksi RBC < 150%",
+        body: `<p>Lonjakan klaim KUR menyebabkan arus kas keluar kuartal ini meningkat Rp 180 Miliar, sementara jatuh tempo deposito jangka panjang masih 4 bulan lagi. Di sisi lain, peningkatan cadangan teknis (IBNR &amp; premi belum merupakan pendapatan) menekan rasio <em>Risk-Based Capital (RBC)</em> mendekati batas internal 150%.</p>`
+      },
+      chat: {
+        partnerName: "Kepala Divisi Investasi & Treasury (AI Roleplay)",
+        opening: "Jika kita mencairkan obligasi pemerintah sekarang sebelum jatuh tempo, ada potensi kerugian mark-to-market sekitar Rp 6 Miliar.",
+        followUp: "Opsi lain adalah mempercepat penagihan piutang premi & reasuransi (cash call). Mana yang lebih optimal?"
+      },
+      call: {
+        partnerName: "Kepala Bagian Akuntansi & Pelaporan OJK (Virtual Call)",
+        prompt: "Diskusikan dampak pencadangan teknis PSAK 74 terhadap laba/ekuitas dan langkah menjaga RBC di atas batas sehat."
+      },
+      documents: {
+        title: "Dokumen Analisa Bisnis: Rencana Penguatan Likuiditas & RBC 180%",
+        brief: "Susun strategi ALM (Asset Liability Management), akselerasi cash-call reasuransi, penagihan piutang premi, dan optimalisasi biaya operasional."
+      },
+      aiHints: [
+        { q: "Langkah menghindari rugi jual obligasi", a: "Aktifkan repo obligasi jangka pendek, percepat cash-call recovery reasuransi, dan tagih piutang premi aging > 60 hari." }
+      ],
+      keywords: ["rbc", "likuiditas", "alm", "cadangan teknis", "ibnr", "psak 74", "cash call", "reasuransi", "piutang premi", "repo", "investasi"],
+      rubric: ["Pengelolaan Likuiditas & ALM", "Pemahaman Regulasi RBC & PSAK 74", "Efisiensi Biaya & Penagihan Piutang", "Komunikasi Strategis Keuangan"],
+      benchmark: "Menghindari cut-loss obligasi dengan skema repo/fasilitas likuiditas, mempercepat cash-call reasuransi dan penagihan piutang premi, serta mengoptimalkan bauran aset likuid untuk menjaga RBC > 180%."
+    },
+    {
+      id: "bod3-bm1",
+      units: ["Branch Manager", "Bisnis & Pemasaran"],
+      unit: "Branch Manager / Bisnis & Pemasaran",
+      title: "Turnaround Kinerja Kantor Wilayah / Cabang Utama (Premi vs Loss Ratio)",
+      durationSec: 1800,
+      email: {
+        from: "Direktur Utama <dirut@asuransi-kredit.co.id>",
+        subject: "Evaluasi Kinerja Wilayah: Target Premi Non-KUR Tercapai 62%, Loss Ratio 84%",
+        body: `<p>Sebagai pimpinan wilayah/cabang utama, Anda menghadapi ketertinggalan target premi Non-KUR (Suretyship &amp; Asuransi Umum) sementara tim pemasaran dan teknik saling menyalahkan atas lamanya SLA penerbitan polis.</p>`
+      },
+      chat: {
+        partnerName: "Pemimpin Cabang Bank BUMN Mitra (AI Roleplay)",
+        opening: "Tim Anda lambat menerbitkan sertifikat Suretyship dan polis Asuransi Kebakaran debitur komersial kami, sehingga nasabah lari ke asuransi lain.",
+        followUp: "Kalau SLA penerbitan bisa dijamin maksimal 2 hari kerja untuk berkas lengkap, kami siap alihkan seluruh debitur komersial ke Anda."
+      },
+      call: {
+        partnerName: "Technical Head & Koordinator Pemasaran Wilayah (Virtual Call)",
+        prompt: "Pimpin rapat sinkronisasi antara tim Pemasaran dan Underwriting/Klaim untuk mengakhiri silo dan menetapkan SLA bersama."
+      },
+      documents: {
+        title: "Dokumen Analisa Bisnis: Rencana Turnaround Wilayah 100 Hari",
+        brief: "Rumuskan target akuisisi Non-KUR, perbaikan SLA lintas fungsi (Pemasaran–Teknik–Keuangan), dan pengendalian Loss Ratio."
+      },
+      aiHints: [
+        { q: "Cara menghilangkan silo Pemasaran vs Teknik", a: "Buat SLA bersama (joint KPI): Pemasaran wajib pakai checklist kelengkapan awal, Teknik wajib proses berkas lengkap maksimal 2 hari." }
+      ],
+      keywords: ["sla", "non-kur", "suretyship", "asuransi umum", "joint kpi", "silo", "bank mitra", "loss ratio", "turnaround", "cabang"],
+      rubric: ["Kepemimpinan Lintas Fungsi", "Strategi Pertumbuhan Non-KUR", "Orientasi Layanan Mitra", "Pengendalian Profitabilitas Wilayah"],
+      benchmark: "Menyelaraskan Pemasaran dan Teknik melalui joint KPI dan checklist pra-pengajuan, menjamin SLA 2 hari untuk berkas lengkap ke Bank Mitra, serta memfokuskan ekspansi pada segmen Asuransi Umum & Suretyship bermargin sehat."
+    },
+    {
+      id: "bod3-mr1",
+      units: ["Manajemen Risiko"],
       unit: "Manajemen Risiko",
-      title: "Krisis Konsentrasi Risiko Suretyship Proyek Infrastruktur",
+      title: "Krisis Konsentrasi Risiko Suretyship & Early Warning System (EWS)",
       durationSec: 1800,
       email: {
         from: "Komite Pemantau Risiko <risk@asuransi-kredit.co.id>",
         subject: "EWS Alert: 42% Eksposur Suretyship Terkonsentrasi di 3 Grup Kontraktor",
-        body: `<p>Tiga grup kontraktor besar mengalami penundaan termin proyek pemerintah dengan potensi klaim <em>Performance Bond</em> &amp; <em>Advance Payment Bond</em> mencapai Rp 120 Miliar. Salah satu pemimpin proyek meminta perpanjangan jaminan tanpa tambahan counter-guarantee.</p>`
+        body: `<p>Tiga grup kontraktor besar mengalami penundaan termin proyek dengan potensi klaim mencapai Rp 120 Miliar. Salah satu pemimpin proyek meminta addendum perpanjangan jaminan tanpa tambahan counter-guarantee.</p>`
       },
       chat: {
         partnerName: "Direktur Utama Kontraktor Grup A (AI Roleplay)",
-        opening: "Pak/Bu, termin proyek kami tertunda 3 bulan dari pemilik proyek. Kami butuh addendum perpanjangan jaminan tanpa tambah agunan karena aset kami sedang dijaminkan ke bank.",
-        followUp: "Jika perusahaan Bapak menolak perpanjangan, proyek bisa diputus kontrak oleh obligee dan justru memicu pencairan klaim Rp 45 Miliar besok."
+        opening: "Termin proyek kami tertunda 3 bulan. Kami butuh addendum perpanjangan jaminan tanpa tambah agunan.",
+        followUp: "Jika ditolak, proyek bisa diputus kontrak dan langsung memicu klaim Rp 45 Miliar besok."
       },
       call: {
         partnerName: "Kepala Divisi Reasuransi & Aktuaria (Virtual Call)",
-        prompt: "Diskusikan strategi proteksi neraca, aktivasi koordinasi reasuransi, dan syarat escrow account termin proyek dalam panggilan virtual ini."
+        prompt: "Diskusikan stress-test eksposur, aktivasi reasuransi, dan penguncian escrow account termin proyek."
       },
       documents: {
-        title: "Dokumen Analisa Bisnis: Stress-Test Eksposur Single Obligor",
-        brief: "Rumuskan langkah mitigasi jangka pendek (escrow termin, reasuransi) dan revisi kebijakan limit single-obligor agar konsentrasi tidak terulang."
+        title: "Dokumen Analisa Bisnis: Stress-Test Single Obligor & Mitigasi Risiko",
+        brief: "Susun langkah mitigasi jangka pendek dan revisi kebijakan batas maksimum konsentrasi obligor."
       },
       aiHints: [
-        { q: "Syarat addendum tanpa agunan tambahan", a: "Wajibkan penguncian rekening penampung (escrow account) termin proyek, surat pernyataan kesanggupan obligee, dan persetujuan reasuransi." }
+        { q: "Syarat addendum aman", a: "Wajibkan penguncian escrow account termin proyek dan persetujuan tertulis reasuransi." }
       ],
-      keywords: ["konsentrasi", "eksposur", "escrow", "reasuransi", "obligee", "single obligor", "limit", "stress-test", "addendum", "counter-guarantee"],
-      rubric: ["Manajemen Risiko Konsentrasi", "Perlindungan Neraca & Reasuransi", "Negosiasi dengan Principal & Obligee", "Perbaikan Kebijakan Limit"],
-      benchmark: "Melakukan stress-test eksposur, mengunci escrow account termin proyek sebagai syarat mutlak addendum, berkoordinasi dengan reasuransi, dan merevisi batas maksimum single-obligor."
-    },
-    {
-      id: "bod3-p3",
-      unit: "Bisnis & Pemasaran",
-      title: "Transformasi Digital Underwriting & Mitigasi Fraud KUR Wilayah",
-      durationSec: 1800,
-      email: {
-        from: "Kepala Audit Internal <audit@asuransi-kredit.co.id>",
-        subject: "Indikasi Pola Fraud Klaim KUR Terstruktur di 2 Cabang Wilayah",
-        body: `<p>Ditemukan pola pengajuan klaim KUR dari 45 debitur fiktif yang menggunakan alamat usaha sama. Di sisi lain, Direksi meminta target akuisisi premi Non-KUR tetap tercapai melalui kanal digital.</p>`
-      },
-      chat: {
-        partnerName: "Pimpinan Wilayah Bank Penyalur (AI Roleplay)",
-        opening: "Kami kaget ada temuan audit tersebut. Mohon jangan hentikan seluruh kuota penjaminan KUR di wilayah kami karena itu akan menghambat penyaluran UMKM.",
-        followUp: "Kami setuju investigasi, tapi bagaimana mekanisme kontrol bersama ke depan agar tidak menghambat debitur yang benar-benar layak?"
-      },
-      call: {
-        partnerName: "Kepala Divisi IT & Operasional (Virtual Call)",
-        prompt: "Sampaikan arahan strategis terkait penerapan auto-red-flag (deteksi duplikasi alamat/NIK) dan integrasi API scoring."
-      },
-      documents: {
-        title: "Dokumen Analisa Bisnis: Roadmap Anti-Fraud & Digital Underwriting",
-        brief: "Susun kerangka tata kelola anti-fraud (preventif, detektif, represif) serta strategi pertumbuhan premi Non-KUR berbasis kanal digital."
-      },
-      aiHints: [
-        { q: "Langkah cepat isolasi fraud", a: "Freeze sementara pencairan klaim pada klaster terindikasi untuk investigasi gabungan, tanpa menghentikan penyaluran KUR yang lolos validasi NIK/duplikasi." }
-      ],
-      keywords: ["fraud", "investigasi", "freeze", "duplikasi", "api", "scoring", "red-flag", "audit", "digital", "umkm", "non-kur"],
-      rubric: ["Ketegasan Anti-Fraud & Integritas", "Komunikasi Kemitraan Berimbang", "Visi Digitalisasi & Kontrol Sistem", "Keberlanjutan Bisnis"],
-      benchmark: "Mengisolasi klaster terindikasi fraud untuk audit investigatif & pelaporan hukum tanpa mematikan penyaluran sehat, serta membangun kontrol sistem auto-red-flag duplikasi data berbasis API."
+      keywords: ["konsentrasi", "eksposur", "escrow", "reasuransi", "single obligor", "limit", "stress-test", "ews", "addendum"],
+      rubric: ["Manajemen Risiko Konsentrasi", "Perlindungan Neraca", "Negosiasi Berbasis Risiko", "Penguatan Kebijakan Limit"],
+      benchmark: "Melakukan stress-test, mewajibkan escrow account termin proyek sebagai syarat addendum, berkoordinasi dengan reasuransi, dan merevisi batas single-obligor."
     }
   ],
   cap: [
     {
       id: "bod3-cap1",
       competency: "Strategic Decision Making & Risk Governance",
-      prompt: "Ceritakan pencapaian paling signifikan Anda dalam menyeimbangkan target pertumbuhan bisnis (KUR/Non-KUR) dengan pengendalian risiko/klaim di level strategis.",
+      prompt: "Ceritakan pencapaian paling signifikan Anda dalam menyeimbangkan target pertumbuhan bisnis/kinerja unit dengan pengendalian risiko atau kepatuhan di level strategis.",
       indicators: ["Mengidentifikasi risiko sistemik/portofolio", "Keputusan berbasis data & regulasi", "Kesepakatan lintas pemangku kepentingan", "Dampak terukur pada Loss Ratio / RBC / Laba"]
     },
     {
       id: "bod3-cap2",
       competency: "Driving Transformation & Stakeholder Alignment",
-      prompt: "Ceritakan pengalaman Anda memimpin perubahan kebijakan atau proses kerja yang awalnya ditolak oleh mitra eksternal (Bank/Obligee) atau tim internal.",
+      prompt: "Ceritakan pengalaman Anda memimpin perubahan kebijakan atau proses kerja yang awalnya ditolak oleh mitra eksternal (Bank/Obligee/Regulator) atau tim internal.",
       indicators: ["Analisis akar penolakan", "Strategi persuasi & negosiasi eksekutif", "Eksekusi bertahap & monitoring", "Hasil nyata keberlanjutan kerja sama"]
     },
     {
       id: "bod3-cap3",
-      competency: "Crisis Management & Anti-Fraud Governance",
-      prompt: "Ceritakan situasi krisis (misalnya lonjakan klaim tak terduga, potensi fraud besar, atau temuan audit kritis) yang pernah Anda tangani hingga tuntas.",
+      competency: "Crisis Management & Financial/Operational Resilience",
+      prompt: "Ceritakan situasi krisis (lonjakan klaim, tekanan likuiditas, potensi fraud besar, atau temuan audit kritis) yang pernah Anda tangani hingga tuntas.",
       indicators: ["Kecepatan isolasi masalah", "Koordinasi lintas divisi/eksternal", "Tindakan korektif & perbaikan sistem", "Pemulihan finansial/reputasi yang terukur"]
     },
     {
       id: "bod3-cap4",
       competency: "Building Strategic Partnerships",
-      prompt: "Ceritakan bagaimana Anda membangun atau menyelamatkan kemitraan strategis (Perbankan, Reasuransi, atau Korporasi) yang berdampak besar pada kinerja perusahaan.",
-      indicators: ["Pemahaman kebutuhan strategis mitra", "Solusi win-win tanpa melanggar tata kelola", "Eksekusi komitmen bersama", "Pertumbuhan premi/recovery terukur"]
+      prompt: "Ceritakan bagaimana Anda membangun atau menyelamatkan kemitraan strategis yang berdampak besar pada kinerja perusahaan atau unit Anda.",
+      indicators: ["Pemahaman kebutuhan strategis mitra", "Solusi win-win tanpa melanggar tata kelola", "Eksekusi komitmen bersama", "Pertumbuhan premi/recovery/efisiensi terukur"]
     }
   ],
   personality: [
     { id: "o3-1", dim: "Openness", text: "Saya aktif mendorong adopsi teknologi (seperti AI scoring dan integrasi host-to-host) untuk memperbarui proses bisnis lama.", reverse: false },
     { id: "o3-2", dim: "Openness", text: "Saya lebih nyaman mempertahankan pola kerja konvensional yang sudah terbukti daripada mencoba pendekatan baru.", reverse: true },
-    { id: "o3-3", dim: "Openness", text: "Saya sering mengeksplorasi model produk penjaminan baru dari pasar global untuk diterapkan di perusahaan.", reverse: false },
+    { id: "o3-3", dim: "Openness", text: "Saya sering mengeksplorasi model produk penjaminan atau pengelolaan keuangan baru untuk diterapkan di perusahaan.", reverse: false },
     { id: "c3-1", dim: "Conscientiousness", text: "Setiap keputusan strategis yang saya ambil selalu didasarkan pada verifikasi data, kepatuhan regulasi, dan mitigasi risiko terukur.", reverse: false },
     { id: "c3-2", dim: "Conscientiousness", text: "Dalam situasi mendesak, saya kadang mengabaikan detail dokumentasi demi mempercepat proses.", reverse: true },
     { id: "c3-3", dim: "Conscientiousness", text: "Saya menetapkan indikator peringatan dini (EWS) yang ketat agar penyimpangan portofolio terdeteksi sejak awal.", reverse: false },

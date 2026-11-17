@@ -10,34 +10,85 @@ window.DATA_BOD5 = {
   ],
   casestudy: [
     {
-      id: "bod5-cs1",
-      unit: "Underwriting & Klaim",
-      title: "Penanganan Backlog Verifikasi Klaim KUR & Kelengkapan Dokumen Suretyship",
+      id: "bod5-uw1",
+      units: ["Underwriting", "Technical Head", "Manajemen Risiko"],
+      unit: "Underwriting",
+      title: "Verifikasi Kelayakan Polis Suretyship (Bid Bond & Performance Bond) Menjelang Batas SLA",
       prepSec: 600,
       presentSec: 240,
       brief: `
         <h4>Latar Belakang Kasus</h4>
-        <p>Anda adalah Officer / Analis Klaim &amp; Penjaminan (BOD-5) di Kantor Cabang. Bulan ini cabang menghadapi kendala operasional:</p>
-        <table class="data-table">
-          <thead><tr><th>Jenis Produk</th><th>Berkas Masuk</th><th>Lengkap &amp; Valid</th><th>Tidak Lengkap</th><th>SLA Maksimal</th></tr></thead>
-          <tbody>
-            <tr><td>Klaim KUR Mikro</td><td>240 berkas</td><td>165 berkas</td><td>75 berkas (tanpa surat tagih/NPF)</td><td>10 hari kerja</td></tr>
-            <tr><td>Suretyship (Bid Bond)</td><td>45 berkas</td><td>35 berkas</td><td>10 berkas (lap. keuangan belum update)</td><td>2 hari kerja</td></tr>
-          </tbody>
-        </table>
-        <p>Terdapat 3 analis (termasuk Anda) dengan waktu verifikasi rata-rata 25 menit/berkas.</p>
+        <p>Anda adalah Officer Underwriting (BOD-5). Hari ini masuk 45 berkas permohonan <em>Suretyship (Bid Bond)</em> dengan SLA maksimal 2 hari kerja: 35 berkas lengkap &amp; valid, sedangkan 10 berkas laporan keuangannya belum <em>update</em> dan 2 di antaranya memiliki catatan tunggakan subrogasi lama.</p>
       `,
       writtenQuestions: [
-        "1. Bagaimana Anda menentukan prioritas pemrosesan berkas dan membagi beban kerja 3 analis agar SLA Bid Bond (2 hari) & KUR (10 hari) terjaga?",
-        "2. Apa tindakan Anda terhadap 75 berkas KUR dan 10 berkas Suretyship yang tidak lengkap agar tidak terjadi salah bayar maupun penumpukan antrean?"
+        "1. Bagaimana Anda memprioritaskan 45 berkas tersebut dan menangani 10 berkas yang tidak lengkap / punya catatan tunggakan?",
+        "2. Checklist kontrol apa yang Anda usulkan kepada tim pemasaran agar berkas masuk selalu lengkap?"
       ],
-      keywords: ["prioritas", "bid bond", "sla", "triase", "lengkap", "stop-clock", "pending", "bank mitra", "checklist", "kapasitas", "template", "verifikasi"],
-      rubric: ["Ketajaman Analisis beban & SLA", "Relevansi Solusi triase & stop-clock", "Kualitas Rekomendasi checklist pra-kirim", "Penyampaian Terstruktur & Jelas"],
-      benchmark: "Prioritaskan 35 Bid Bond lengkap (SLA 2 hari) terlebih dahulu, lalu 165 KUR lengkap. Terbitkan surat konfirmasi kekurangan dokumen (stop-clock SLA sesuai PKS) untuk berkas tidak lengkap. Bagi 1 analis untuk Suretyship dan 2 analis untuk KUR, serta buat checklist pra-kirim bagi Bank Mitra."
+      keywords: ["prioritas", "bid bond", "sla", "lengkap", "pending", "laporan keuangan", "subrogasi", "checklist", "underwriting"],
+      rubric: ["Ketajaman Analisis Risiko Underwriting", "Relevansi Solusi Triase", "Kualitas Rekomendasi Checklist", "Struktur Presentasi Asinkron"],
+      benchmark: "Segera proses 35 berkas lengkap agar SLA 2 hari terpenuhi; tahan 10 berkas tidak lengkap dengan notifikasi kekurangan dokumen dan blokir 2 berkas yang masih punya tunggakan subrogasi; serta terapkan checklist pra-kirim."
     },
     {
-      id: "bod5-cs2",
-      unit: "Bisnis & Pemasaran",
+      id: "bod5-kl1",
+      units: ["Klaim", "Technical Head"],
+      unit: "Klaim",
+      title: "Penanganan Backlog 240 Berkas Klaim KUR Mikro & Dokumen Tidak Lengkap",
+      prepSec: 600,
+      presentSec: 240,
+      brief: `
+        <h4>Latar Belakang Kasus</h4>
+        <p>Di unit Klaim Cabang terdapat 240 berkas klaim KUR Mikro masuk bulan ini (SLA 10 hari kerja): 165 berkas lengkap, dan 75 berkas tanpa surat tagih/NPF dari bank. Ada 3 analis dengan waktu verifikasi rata-rata 25 menit/berkas.</p>
+      `,
+      writtenQuestions: [
+        "1. Hitung kebutuhan waktu verifikasi 165 berkas lengkap oleh 3 analis dan atur pembagian kerjanya.",
+        "2. Bagaimana penanganan 75 berkas tidak lengkap sesuai mekanisme stop-clock SLA pada PKS?"
+      ],
+      keywords: ["prioritas", "sla", "triase", "lengkap", "stop-clock", "pending", "bank mitra", "kapasitas", "verifikasi"],
+      rubric: ["Perhitungan Beban Kerja & SLA", "Kepatuhan Prosedur Klaim & PKS", "Koordinasi Bank Mitra", "Struktur Presentasi Asinkron"],
+      benchmark: "165 berkas x 25 menit = 4.125 menit (68,75 jam total atau ~23 jam/analis, selesai dalam ~3–4 hari kerja). Prioritaskan 165 berkas lengkap, dan terbitkan konfirmasi kekurangan dokumen (stop-clock SLA) untuk 75 berkas."
+    },
+    {
+      id: "bod5-sub1",
+      units: ["Subrogasi"],
+      unit: "Subrogasi",
+      title: "Rekonsiliasi Selisih Data Setoran Subrogasi Rp 185 Juta & Prioritas Penagihan",
+      prepSec: 600,
+      presentSec: 240,
+      brief: `
+        <h4>Latar Belakang Kasus</h4>
+        <p>Saat rekonsiliasi bulanan dengan Bank Mitra Z, ditemukan 14 rekening debitur subrogasi yang sudah menyetor angsuran pemulihan di bank sebesar Rp 185 Juta namun belum tercatat di sistem kita, serta 40 debitur subrogasi menunggak di atas 12 bulan dengan total nilai Rp 1,4 Miliar.</p>
+      `,
+      writtenQuestions: [
+        "1. Bagaimana langkah verifikasi dan rekonsiliasi Anda atas selisih Rp 185 Juta tersebut?",
+        "2. Bagaimana Anda menyusun prioritas penagihan 40 debitur menunggak tersebut?"
+      ],
+      keywords: ["rekonsiliasi", "rekening koran", "berita acara", "pareto", "prioritas", "subrogasi", "cut-off", "monitoring"],
+      rubric: ["Ketelitian Rekonsiliasi Subrogasi", "Strategi Prioritas Penagihan", "Kontrol Preventif", "Kejelasan Presentasi"],
+      benchmark: "Cocokkan mutasi rekening koran & bukti setor dengan Bank Mitra lalu buat Berita Acara Rekonsiliasi dan jadwal cut-off mingguan; urutkan 40 debitur berdasarkan nilai terbesar (Pareto) untuk kunjungan & penagihan intensif."
+    },
+    {
+      id: "bod5-keu1",
+      units: ["Keuangan"],
+      unit: "Keuangan",
+      title: "Penyelesaian Selisih Kas/Bank, Verifikasi Pembayaran Klaim, & Aging Piutang Premi",
+      prepSec: 600,
+      presentSec: 240,
+      brief: `
+        <h4>Latar Belakang Kasus</h4>
+        <p>Sebagai Officer Keuangan Cabang, Anda menemukan: (1) Terdapat 12 bukti pembayaran premi dari agen senilai Rp 240 Juta yang belum teridentifikasi nomor polisnya di rekening koran, (2) 5 berkas pembayaran klaim KUR senilai Rp 480 Juta mendesak ditransfer hari ini, namun 1 berkas nomor rekening bank mitranya berbeda dari data PKS.</p>
+      `,
+      writtenQuestions: [
+        "1. Apa keputusan Anda terhadap 5 berkas transfer klaim (khususnya 1 berkas yang nomor rekeningnya berbeda)?",
+        "2. Bagaimana langkah Anda mengidentifikasi Rp 240 Juta dana mengendap (unidentified receipt) agar pencatatan piutang premi akurat?"
+      ],
+      keywords: ["rekonsiliasi", "rekening koran", "unidentified", "tunda", "konfirmasi", "pks", "voucher", "piutang premi", "audit", "kontrol"],
+      rubric: ["Ketelitian & Kontrol Pembayaran Keuangan", "Kepatuhan Verifikasi Rekening PKS", "Penyelesaian Unidentified Receipt", "Kejelasan Penyampaian Presentasi"],
+      benchmark: "Proses transfer 4 berkas klaim yang rekeningnya cocok sesuai PKS, dan tunda 1 berkas yang berbeda rekeningnya untuk konfirmasi tertulis resmi dari Bank Mitra. Untuk Rp 240 Juta unidentified receipt, lakukan konfirmasi bukti transfer ke agen/pemasaran dan terapkan kewajiban mencantumkan nomor nota debit/polis pada berita transfer."
+    },
+    {
+      id: "bod5-bm1",
+      units: ["Branch Manager", "Bisnis & Pemasaran"],
+      unit: "Bisnis & Pemasaran / Branch Manager",
       title: "Peningkatan Konversi Polis Asuransi Umum bagi Debitur KUR Naik Kelas",
       prepSec: 600,
       presentSec: 240,
@@ -50,45 +101,27 @@ window.DATA_BOD5 = {
         "2. Rancang langkah konkret bersama RM Bank Mitra dan target konversi realistis untuk 6 bulan ke depan."
       ],
       keywords: ["edukasi", "bundling", "rm", "bank", "premi", "risiko", "umkm", "kebakaran", "simulasi", "target", "monitoring"],
-      rubric: ["Ketajaman Analisis Kebutuhan UMKM", "Relevansi Solusi Edukasi & Simulasi Premi", "Kualitas Rekomendasi Sinergi RM Bank", "Kejelasan Struktur Presentasi"],
+      rubric: ["Ketajaman Analisis Kebutuhan UMKM", "Relevansi Solusi Edukasi & Simulasi Premi", "Sinergi RM Bank Mitra", "Kejelasan Struktur Presentasi"],
       benchmark: "Mengedukasi debitur dengan simulasi premi harian yang ringan dibanding risiko kerugian aset, membekali RM Bank Mitra dengan brosur 1 halaman & kalkulator premi cepat, serta memprioritaskan klaster pasar berisiko tinggi dengan target bertahap dari 12% ke 30% dalam 6 bulan."
-    },
-    {
-      id: "bod5-cs3",
-      unit: "Underwriting & Klaim",
-      title: "Rekonsiliasi Selisih Data Subrogasi & Pencegahan Klaim Ganda",
-      prepSec: 600,
-      presentSec: 240,
-      brief: `
-        <h4>Latar Belakang Kasus</h4>
-        <p>Saat rekonsiliasi bulanan dengan Bank Mitra Z, ditemukan 14 rekening debitur subrogasi yang sudah menyetor angsuran pemulihan di rekening bank sebesar Rp 185 Juta namun belum tercatat di sistem kita, serta 3 berkas klaim KUR yang diajukan dua kali dengan nomor registrasi berbeda.</p>
-      `,
-      writtenQuestions: [
-        "1. Bagaimana langkah verifikasi dan rekonsiliasi Anda atas selisih Rp 185 Juta dan 3 berkas klaim ganda tersebut?",
-        "2. Kontrol operasional apa yang Anda usulkan agar kejadian serupa tidak terulang?"
-      ],
-      keywords: ["rekonsiliasi", "rekening koran", "nik", "duplikasi", "tolak", "berita acara", "sistem", "cut-off", "monitoring", "audit"],
-      rubric: ["Ketelitian Rekonsiliasi Keuangan", "Kepekaan Deteksi Klaim Ganda", "Usulan Kontrol Preventif", "Kejelasan Penyampaian Presentasi"],
-      benchmark: "Melakukan pencocokan mutasi rekening koran & bukti setor dengan Bank Mitra lalu menuangkannya dalam Berita Acara Rekonsiliasi; menolak 3 pengajuan klaim ganda berbasis cek NIK/nomor PK kredit; serta mengusulkan jadwal cut-off rekonsiliasi mingguan."
     }
   ],
   cap: [
     {
       id: "bod5-cap1",
       competency: "Execution Excellence & Quality Orientation",
-      prompt: "Ceritakan pencapaian kerja terbaik Anda saat menangani volume pekerjaan tinggi (misalnya backlog verifikasi klaim/polis, penagihan subrogasi, atau target pemasaran) dengan tetap menjaga ketelitian dan kepatuhan SOP.",
+      prompt: "Ceritakan pencapaian kerja terbaik Anda saat menangani volume pekerjaan tinggi dengan tetap menjaga ketelitian, akurasi data, dan kepatuhan SOP.",
       indicators: ["Situasi/beban kerja jelas", "Metode kerja sistematis", "Ketelitian & kepatuhan SOP terjaga", "Hasil terukur (SLA/akurasi)"]
     },
     {
       id: "bod5-cap2",
       competency: "Problem Solving & Collaboration",
-      prompt: "Ceritakan pengalaman Anda menemukan kesalahan atau ketidaksesuaian data/dokumen dalam pekerjaan, lalu bagaimana Anda mengatasinya bersama tim atau mitra terkait.",
+      prompt: "Ceritakan pengalaman Anda menemukan kesalahan atau ketidaksesuaian data/dokumen/angka dalam pekerjaan, lalu bagaimana Anda mengatasinya bersama tim atau mitra terkait.",
       indicators: ["Kepekaan mendeteksi anomali", "Langkah verifikasi & eskalasi tepat", "Komunikasi kooperatif", "Pencegahan agar tidak terulang"]
     },
     {
       id: "bod5-cap3",
       competency: "Service Orientation & Partner Coordination",
-      prompt: "Ceritakan pengalaman Anda membantu nasabah, kontraktor, atau Bank Mitra menyelesaikan kendala layanan yang mendesak tanpa melanggar ketentuan perusahaan.",
+      prompt: "Ceritakan pengalaman Anda membantu nasabah, kontraktor, atau unit/mitra lain menyelesaikan kendala layanan yang mendesak tanpa melanggar ketentuan perusahaan.",
       indicators: ["Responsif terhadap kebutuhan mitra", "Komunikasi jelas & solutif", "Tetap patuh aturan", "Kepuasan mitra terjaga"]
     },
     {
@@ -173,7 +206,7 @@ window.DATA_BOD5 = {
     {
       aspect: "Karakteristik Kepribadian (Integritas)",
       id: "psy-8",
-      question: "Anda menemukan selisih Rp 250.000 pada berkas klaim yang sudah disetujui sistem. Rekan menyarankan mengabaikannya karena kecil. Sikap Anda?",
+      question: "Anda menemukan selisih Rp 250.000 pada berkas yang sudah disetujui sistem. Rekan menyarankan mengabaikannya karena kecil. Sikap Anda?",
       options: [
         "Mencatat dan mengonfirmasi selisih tersebut sesuai prosedur agar data audit akurat.",
         "Mengikuti saran rekan agar pekerjaan cepat selesai.",
@@ -181,17 +214,17 @@ window.DATA_BOD5 = {
         "Membiarkan berkas tanpa melapor."
       ],
       answer: 0,
-      explanation: "Integritas dan akurasi data adalah standar utama operasional asuransi."
+      explanation: "Integritas dan akurasi data adalah standar utama operasional."
     },
     {
       aspect: "Karakteristik Kepribadian (Kerja Sama)",
       id: "psy-9",
-      question: "Rekan satu tim Anda sedang sakit sehingga 20 berkas klaimnya terancam melewati SLA hari ini. Apa yang Anda lakukan?",
+      question: "Rekan satu tim Anda sedang sakit sehingga 20 berkasnya terancam melewati SLA hari ini. Apa yang Anda lakukan?",
       options: [
         "Berkoordinasi dengan atasan untuk membagi prioritas berkas tersebut bersama tim agar SLA unit terjaga.",
         "Fokus pada berkas sendiri saja karena itu bukan tanggung jawab Anda.",
         "Menunda semua berkas rekan tersebut hingga dia masuk kembali.",
-        "Meminta Bank Mitra membatalkan pengajuan sementara."
+        "Meminta mitra membatalkan pengajuan sementara."
       ],
       answer: 0,
       explanation: "Kolaborasi dan kepedulian terhadap SLA tim mencerminkan kerja sama yang solid."
@@ -199,7 +232,7 @@ window.DATA_BOD5 = {
     {
       aspect: "Faktor Motivasi (Orientasi Prestasi & Adaptasi)",
       id: "psy-10",
-      question: "Ketika sistem verifikasi baru diterapkan di kantor dan awalnya terasa lebih lambat bagi Anda, apa yang paling mendorong tindakan Anda?",
+      question: "Ketika sistem kerja baru diterapkan di kantor dan awalnya terasa lebih lambat bagi Anda, apa yang paling mendorong tindakan Anda?",
       options: [
         "Mempelajari alur sistem baru dan mencari cara agar target akurasi serta SLA tetap tercapai.",
         "Kembali memakai cara manual secara diam-diam agar target harian aman.",

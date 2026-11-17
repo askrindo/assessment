@@ -41,11 +41,10 @@
     if (!unitFilter || unitFilter === "Semua") return pool;
     const u = unitFilter.toLowerCase();
     const filtered = pool.filter((s) => {
-      const su = (s.unit || "").toLowerCase();
-      const text = `${su} ${(s.title || "").toLowerCase()}`;
-      if (u === "technical head") return text.includes("underwriting") || text.includes("klaim");
-      if (u === "branch manager") return text.includes("cabang") || text.includes("underwriting") || text.includes("bisnis");
-      return text.includes(u.split(" ")[0]);
+      if (Array.isArray(s.units)) {
+        return s.units.some((tag) => tag.toLowerCase() === u);
+      }
+      return (s.unit || "").toLowerCase().includes(u);
     });
     return filtered.length > 0 ? filtered : pool;
   }
