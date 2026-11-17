@@ -14,6 +14,7 @@
   };
 
   const UNIT_OPTIONS = [
+    { value: "Umum (Generik PortrAI)", label: "Umum / Generik PortrAI (Non-Asuransi)" },
     { value: "Branch Manager", label: "Branch Manager" },
     { value: "Technical Head", label: "Technical Head (Underwriting & Klaim)" },
     { value: "Underwriting", label: "Underwriting" },
@@ -455,7 +456,14 @@
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
-    let pool = shuffleArray(filterPoolByUnit(data.potrai, state.unitFilter)).slice(0, isFull ? 3 : 2);
+    const genPool =
+      window.DATA_GENERAL && (gradeId === "BOD-3" ? window.DATA_GENERAL.potrai_bod3 : window.DATA_GENERAL.potrai_bod4)
+        ? gradeId === "BOD-3"
+          ? window.DATA_GENERAL.potrai_bod3
+          : window.DATA_GENERAL.potrai_bod4
+        : [];
+    const combinedPool = [...data.potrai, ...genPool];
+    let pool = shuffleArray(filterPoolByUnit(combinedPool, state.unitFilter)).slice(0, isFull ? 3 : 2);
     if (isFull) {
       pool = pool.map((p) => ({ ...p, durationSec: 3600 })); // 60 mnt/skenario x 3 = 180 mnt
     }
@@ -758,7 +766,9 @@
   function renderCaseStudy(gradeId) {
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
-    let pool = shuffleArray(filterPoolByUnit(data.casestudy, state.unitFilter)).slice(0, 2);
+    const genCases = window.DATA_GENERAL ? window.DATA_GENERAL.casestudy_bod5 : [];
+    const combinedCases = [...data.casestudy, ...genCases];
+    let pool = shuffleArray(filterPoolByUnit(combinedCases, state.unitFilter)).slice(0, 2);
     if (isFull) {
       pool = pool.map((c) => ({ ...c, prepSec: 4500, presentSec: 1200 })); // (75+20) x 2 = 190 mnt
     }
@@ -1187,7 +1197,14 @@
   function renderPsychometric(gradeId) {
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
-    const items = shuffleArray(data.psychometric).slice(0, isFull ? 10 : 6).map(shuffleQuizOptions);
+    const genPsy = window.DATA_GENERAL ? window.DATA_GENERAL.psychometric_general : [];
+    const sourcePsy =
+      state.unitFilter === "Umum (Generik PortrAI)"
+        ? genPsy
+        : state.unitFilter === "Semua"
+        ? [...data.psychometric, ...genPsy]
+        : data.psychometric;
+    const items = shuffleArray(sourcePsy).slice(0, isFull ? 10 : 6).map(shuffleQuizOptions);
     let idx = 0;
     let selected = null;
     let checked = false;
