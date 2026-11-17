@@ -13,6 +13,43 @@
     "BOD-5": window.DATA_BOD5
   };
 
+  const UNIT_OPTIONS = [
+    { value: "Branch Manager", label: "Branch Manager" },
+    { value: "Technical Head", label: "Technical Head (Underwriting & Klaim)" },
+    { value: "Underwriting", label: "Underwriting" },
+    { value: "Klaim", label: "Klaim" },
+    { value: "Subrogasi", label: "Subrogasi" },
+    { value: "Keuangan", label: "Keuangan" },
+    { value: "Bisnis & Pemasaran", label: "Bisnis & Pemasaran" },
+    { value: "Manajemen Risiko", label: "Manajemen Risiko" }
+  ];
+
+  function renderUnitOptions(selectedVal, includeAll = false) {
+    const allOpt = includeAll
+      ? `<option value="Semua" ${selectedVal === "Semua" ? "selected" : ""}>In General — Semua Bidang (Campuran)</option>`
+      : "";
+    const opts = UNIT_OPTIONS.map(
+      (u) => `<option value="${u.value}" ${selectedVal === u.value ? "selected" : ""}>${u.label}</option>`
+    ).join("");
+    const tailAll = !includeAll
+      ? `<option value="Semua" ${selectedVal === "Semua" ? "selected" : ""}>Semua Bidang / Umum</option>`
+      : "";
+    return allOpt + opts + tailAll;
+  }
+
+  function filterPoolByUnit(pool, unitFilter) {
+    if (!unitFilter || unitFilter === "Semua") return pool;
+    const u = unitFilter.toLowerCase();
+    const filtered = pool.filter((s) => {
+      const su = (s.unit || "").toLowerCase();
+      const text = `${su} ${(s.title || "").toLowerCase()}`;
+      if (u === "technical head") return text.includes("underwriting") || text.includes("klaim");
+      if (u === "branch manager") return text.includes("cabang") || text.includes("underwriting") || text.includes("bisnis");
+      return text.includes(u.split(" ")[0]);
+    });
+    return filtered.length > 0 ? filtered : pool;
+  }
+
   function loadSession() {
     try {
       return JSON.parse(localStorage.getItem("askrindo_session_v1") || "null");
@@ -184,9 +221,7 @@
                 <div>
                   <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Unit / Bidang</label>
                   <select id="regUnit" class="select-input" style="width:100%;min-width:0;">
-                    <option value="Underwriting & Klaim">Underwriting &amp; Klaim</option>
-                    <option value="Bisnis & Pemasaran">Bisnis &amp; Pemasaran</option>
-                    <option value="Semua">Semua Bidang</option>
+                    ${renderUnitOptions("Underwriting", false)}
                   </select>
                 </div>
               </div>
@@ -306,9 +341,7 @@
         <div class="filter-bar">
           <label for="unitSelect">Fokus Unit / Bidang:</label>
           <select id="unitSelect" class="select-input">
-            <option value="Semua" ${state.unitFilter === "Semua" ? "selected" : ""}>Semua Bidang (Campuran)</option>
-            <option value="Underwriting & Klaim" ${state.unitFilter === "Underwriting & Klaim" ? "selected" : ""}>Underwriting / Penjaminan / Klaim &amp; Subrogasi</option>
-            <option value="Bisnis & Pemasaran" ${state.unitFilter === "Bisnis & Pemasaran" ? "selected" : ""}>Bisnis / Pemasaran (KUR, Suretyship, Umum)</option>
+            ${renderUnitOptions(state.unitFilter, true)}
           </select>
         </div>
       </div>
@@ -415,13 +448,7 @@
   // ======================== POTRAI 5-MODUL WORKSPACE (BOD-3 & BOD-4) ========================
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
-    let pool = data.potrai;
-    if (state.unitFilter !== "Semua") {
-      const filtered = pool.filter((s) => s.unit.includes(state.unitFilter.split(" ")[0]));
-      if (filtered.length > 0) pool = filtered;
-    }
-    pool = shuffleArray(pool).slice(0, 2);
-    pool = shuffleArray(pool).slice(0, 2);
+    let pool = shuffleArray(filterPoolByUnit(data.potrai, state.unitFilter)).slice(0, 2);
 
     let idx = 0;
     let activeTab = "email"; // email | chat | call | documents | ai | eval
@@ -685,12 +712,7 @@
   // ======================== CASE STUDY + ASYNC PRESENTATION (BOD-5) ========================
   function renderCaseStudy(gradeId) {
     const data = GRADES[gradeId];
-    let pool = data.casestudy;
-    if (state.unitFilter !== "Semua") {
-      const filtered = pool.filter((s) => s.unit.includes(state.unitFilter.split(" ")[0]));
-      if (filtered.length > 0) pool = filtered;
-    }
-    pool = shuffleArray(pool).slice(0, 2);
+    let pool = shuffleArray(filterPoolByUnit(data.casestudy, state.unitFilter)).slice(0, 2);
     let idx = 0;
     let stage = "written"; // written | present | eval
     let writtenAnswers = [];
@@ -1492,10 +1514,7 @@
                   <option value="BOD-5">BOD-5 (Grade 8–11)</option>
                 </select>
                 <select id="newUnit" class="select-input" style="min-width:0;">
-                  <option value="Underwriting & Klaim">Underwriting &amp; Klaim</option>
-                  <option value="Bisnis & Pemasaran">Bisnis &amp; Pemasaran</option>
-                  <option value="Manajemen Risiko">Manajemen Risiko</option>
-                  <option value="Semua">Semua Bidang</option>
+                  ${renderUnitOptions("Underwriting", false)}
                 </select>
                 <select id="newRole" class="select-input" style="min-width:0;">
                   <option value="pegawai" selected>Role: Pegawai</option>
@@ -1537,7 +1556,11 @@
                           <option value="BOD-5" ${u.grade === "BOD-5" ? "selected" : ""}>BOD-5</option>
                         </select>
                       </td>
-                      <td><input type="text" id="editUnit" class="select-input" style="min-width:130px;padding:4px 8px;" value="${u.unit}" /></td>
+                      <td>
+                        <select id="editUnit" class="select-input" style="min-width:140px;padding:4px 6px;">
+                          ${renderUnitOptions(u.unit, false)}
+                        </select>
+                      </td>
                       <td>
                         <select id="editRole" class="select-input" style="min-width:95px;padding:4px 6px;">
                           <option value="pegawai" ${u.role === "pegawai" ? "selected" : ""}>pegawai</option>
