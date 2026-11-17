@@ -112,9 +112,14 @@
       stopRingtone();
     }
 
-    function scheduleIncomingCall(delayMs = 20000) {
+    function randomCallDelay(minMs, maxMs) {
+      return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    }
+
+    function scheduleIncomingCall(minMs = 12000, maxMs = 45000) {
       if (callTriggerTimeout) clearTimeout(callTriggerTimeout);
       if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
+      const delayMs = randomCallDelay(minMs, maxMs);
       callTriggerTimeout = setTimeout(() => {
         if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
         ws.incomingCallActive = true;
@@ -225,7 +230,7 @@
               activeMod = "eval";
               draw();
             });
-            scheduleIncomingCall(20000);
+            scheduleIncomingCall(12000, 45000);
             draw();
           } else {
             if (state.fullFlow) nextInFlow();
@@ -524,7 +529,7 @@
             return;
           }
           ws.emailSent = true;
-          scheduleIncomingCall(3000);
+          scheduleIncomingCall(3000, 12000);
           draw();
         });
       }
@@ -708,7 +713,7 @@
       activeMod = "eval";
       draw();
     });
-    scheduleIncomingCall(20000);
+    scheduleIncomingCall(12000, 45000);
     draw();
   };
 })();
