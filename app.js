@@ -11,7 +11,7 @@
   };
 
   let state = {
-    view: "home", // home | potrai | casestudy | cap | personality | psychometric | report | history
+    view: "home",
     selectedGrade: "BOD-4",
     unitFilter: "Semua",
     fullFlow: false,
@@ -52,14 +52,14 @@
   }
 
   function saveHistory(entry) {
-    const key = "askrindo_sim_history_v1";
+    const key = "askrindo_sim_history_v2";
     const list = JSON.parse(localStorage.getItem(key) || "[]");
     list.unshift(entry);
     localStorage.setItem(key, JSON.stringify(list.slice(0, 20)));
   }
 
   function getHistory() {
-    return JSON.parse(localStorage.getItem("askrindo_sim_history_v1") || "[]");
+    return JSON.parse(localStorage.getItem("askrindo_sim_history_v2") || "[]");
   }
 
   // ======================== HOME VIEW ========================
@@ -72,10 +72,11 @@
 
     root.innerHTML = `
       <div class="card hero-card">
-        <h1>Simulasi Asesmen Rutin — Asuransi Kredit Indonesia</h1>
+        <h1>Simulasi Asesmen Terpadu — Asuransi Kredit Indonesia</h1>
         <p>
-          Platform latihan mandiri berbasis skenario nyata <strong>KUR</strong> dan <strong>Non-KUR (Suretyship &amp; Asuransi Umum)</strong>.
-          Pilih <strong>Level / Job Grade</strong> Anda di bawah ini untuk menjalankan simulasi lengkap (3 metode berurutan) atau berlatih per metode.
+          Disesuaikan dengan format resmi <strong>PotrAI (Email, Chat, Call, Documents, AI Assistant)</strong>,
+          <strong>Case Study + Asynchronous Presentation</strong>, <strong>Career Achievement Portfolio (CAP / STAR)</strong>,
+          <strong>Personality Test (5 Dimensi OCEAN)</strong>, dan <strong>Psychometric Test</strong> untuk portofolio <strong>KUR &amp; Non-KUR (Suretyship &amp; Asuransi Umum)</strong>.
         </p>
         <div class="filter-bar">
           <label for="unitSelect">Fokus Unit / Bidang:</label>
@@ -83,7 +84,6 @@
             <option value="Semua" ${state.unitFilter === "Semua" ? "selected" : ""}>Semua Bidang (Campuran)</option>
             <option value="Underwriting & Klaim" ${state.unitFilter === "Underwriting & Klaim" ? "selected" : ""}>Underwriting / Penjaminan / Klaim &amp; Subrogasi</option>
             <option value="Bisnis & Pemasaran" ${state.unitFilter === "Bisnis & Pemasaran" ? "selected" : ""}>Bisnis / Pemasaran (KUR, Suretyship, Umum)</option>
-            <option value="Manajemen Risiko" ${state.unitFilter === "Manajemen Risiko" ? "selected" : ""}>Manajemen Risiko &amp; Kepatuhan</option>
           </select>
         </div>
       </div>
@@ -100,20 +100,15 @@
     });
 
     document.querySelectorAll("[data-start-full]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const g = btn.getAttribute("data-start-full");
-        startFullAssessment(g);
-      });
+      btn.addEventListener("click", () => startFullAssessment(btn.getAttribute("data-start-full")));
     });
 
     document.querySelectorAll("[data-start-method]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const g = btn.getAttribute("data-grade");
-        const m = btn.getAttribute("data-start-method");
-        state.selectedGrade = g;
+        state.selectedGrade = btn.getAttribute("data-grade");
         state.fullFlow = false;
         state.flowResults = {};
-        launchMethod(g, m);
+        launchMethod(state.selectedGrade, btn.getAttribute("data-start-method"));
       });
     });
   }
@@ -162,19 +157,18 @@
       renderReport();
       return;
     }
-    const nextMethod = state.flowQueue.shift();
-    launchMethod(state.selectedGrade, nextMethod);
+    launchMethod(state.selectedGrade, state.flowQueue.shift());
   }
 
   function launchMethod(gradeId, methodId) {
     if (methodId === "potrai") renderPotrai(gradeId);
     else if (methodId === "casestudy") renderCaseStudy(gradeId);
-    else if (methodId === "cap") renderCap(gradeId);
-    else if (methodId === "personality") renderPersonality(gradeId);
+    else if (methodId === "cap") renderCapStar(gradeId);
+    else if (methodId === "personality") renderOceanPersonality(gradeId);
     else if (methodId === "psychometric") renderPsychometric(gradeId);
   }
 
-  // ======================== POTRAI SIMULATION (BOD-3 & BOD-4) ========================
+  // ======================== POTRAI 5-MODUL WORKSPACE (BOD-3 & BOD-4) ========================
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
     let pool = data.potrai;
@@ -182,155 +176,267 @@
       const filtered = pool.filter((s) => s.unit.includes(state.unitFilter.split(" ")[0]));
       if (filtered.length > 0) pool = filtered;
     }
+
     let idx = 0;
-    let phase = 1; // 1 = initial answer, 2 = follow-up probe, 3 = evaluation
-    let ans1 = "";
-    let ans2 = "";
+    let activeTab = "email"; // email | chat | call | documents | ai | eval
+    let ws = createEmptyWorkspace(pool[0]);
+
+    function createEmptyWorkspace(item) {
+      return {
+        emailReply: "",
+        chatMessages: [{ sender: item.chat.partnerName, role: "ai", text: item.chat.opening }],
+        chatTurn: 0,
+        callResponse: "",
+        docAnalysis: "",
+        aiChat: [{ role: "ai", text: "Halo! Saya PotrAI Assistant. Gunakan tombol bantuan di bawah atau tanyakan hal teknis untuk membantu analisa Anda." }]
+      };
+    }
 
     function draw() {
       const item = pool[idx];
+      const tabDone = {
+        email: ws.emailReply.trim().length >= 20,
+        chat: ws.chatMessages.filter((m) => m.role === "user").length >= 1,
+        call: ws.callResponse.trim().length >= 20,
+        documents: ws.docAnalysis.trim().length >= 20
+      };
+
       root.innerHTML = `
         <div class="card">
           <div class="assess-header">
             <div>
               <span class="grade-badge">${data.title} • PotrAI Simulation</span>
               <h2 style="font-size:20px;color:var(--primary);">${item.title}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Skenario ${idx + 1} dari ${pool.length} • Unit: ${item.unit}</div>
+              <div style="font-size:13px;color:var(--text-muted);">Skenario ${idx + 1}/${pool.length} • Unit: ${item.unit} • Selesaikan 4 modul kerja &amp; gunakan AI Assistant bila perlu</div>
             </div>
-            <div class="timer-pill" id="potraiTimer">08:00</div>
+            <div class="timer-pill" id="potraiTimer">25:00</div>
           </div>
 
-          <div class="memo-box">${item.memo}</div>
-
           ${
-            phase === 1
+            activeTab !== "eval"
               ? `
-            <p style="font-weight:600;margin-bottom:10px;">${item.question}</p>
-            <textarea class="textarea-box" id="potraiAns1" placeholder="Tuliskan keputusan, alasan risiko/bisnis, serta skrip komunikasi Anda secara terstruktur...">${ans1}</textarea>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;">
-              <span style="font-size:12px;color:var(--text-muted);">Tips: Sertakan aspek Risk Governance, SLA, dan solusi konkret.</span>
-              <button class="btn btn-primary" id="btnSubmitP1">Kirim ke AI Assessor</button>
+            <div class="potrai-tabs">
+              <button class="potrai-tab ${activeTab === "email" ? "active" : ""} ${tabDone.email ? "done" : ""}" data-tab="email"><span class="dot"></span> 1. Email (Operational Challenge)</button>
+              <button class="potrai-tab ${activeTab === "chat" ? "active" : ""} ${tabDone.chat ? "done" : ""}" data-tab="chat"><span class="dot"></span> 2. Chat (Role Play AI)</button>
+              <button class="potrai-tab ${activeTab === "call" ? "active" : ""} ${tabDone.call ? "done" : ""}" data-tab="call"><span class="dot"></span> 3. Call (Virtual Meeting)</button>
+              <button class="potrai-tab ${activeTab === "documents" ? "active" : ""} ${tabDone.documents ? "done" : ""}" data-tab="documents"><span class="dot"></span> 4. Documents (Analisa Bisnis)</button>
+              <button class="potrai-tab ${activeTab === "ai" ? "active" : ""}" data-tab="ai">AI Assistant</button>
+            </div>
+
+            <div id="potraiPanel">${renderTabContent(item, activeTab)}</div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px;">
+              <span style="font-size:12px;color:var(--text-muted);">Indikator hijau menandakan modul sudah diisi.</span>
+              <button class="btn btn-emerald" id="btnFinishPotrai">Selesaikan &amp; Evaluasi Simulasi PotrAI</button>
             </div>
           `
-              : phase === 2
-              ? `
-            <div class="feedback-box info" style="margin-bottom:14px;">
-              <strong>Jawaban Awal Anda Tercatat.</strong> AI Assessor memberikan pertanyaan lanjutan (<em>Probe</em>) untuk menguji ketahanan keputusan Anda:
-            </div>
-            <div class="memo-box" style="border-left-color:var(--accent);background:#fffbeb;">
-              <h4>${item.followUpPrompt}</h4>
-            </div>
-            <textarea class="textarea-box" id="potraiAns2" placeholder="Tuliskan respons tegas & terukur Anda terhadap eskalasi lanjutan ini...">${ans2}</textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-              <button class="btn btn-accent" id="btnSubmitP2">Selesaikan &amp; Lihat Evaluasi</button>
-            </div>
-          `
-              : renderPotraiEval(item, ans1, ans2, pool.length, idx)
+              : renderPotraiEval(item)
           }
         </div>
       `;
 
-      if (phase === 1) {
-        startTimer(item.durationSec, "potraiTimer", () => {
-          ans1 = document.getElementById("potraiAns1")?.value || ans1;
-          phase = 2;
-          draw();
+      if (activeTab !== "eval") {
+        document.querySelectorAll("[data-tab]").forEach((b) => {
+          b.addEventListener("click", () => {
+            saveCurrentTabInput();
+            activeTab = b.getAttribute("data-tab");
+            draw();
+          });
         });
-        document.getElementById("btnSubmitP1").addEventListener("click", () => {
-          ans1 = document.getElementById("potraiAns1").value.trim();
-          if (ans1.length < 25) {
-            alert("Mohon tulis jawaban minimal 25 karakter agar dapat dievaluasi.");
+
+        bindTabEvents(item);
+
+        document.getElementById("btnFinishPotrai").addEventListener("click", () => {
+          saveCurrentTabInput();
+          if (!ws.emailReply && !ws.docAnalysis && !ws.callResponse) {
+            alert("Mohon isi minimal beberapa modul kerja (Email / Chat / Call / Documents) sebelum evaluasi.");
             return;
           }
-          phase = 2;
-          draw();
-        });
-      } else if (phase === 2) {
-        clearTimer();
-        document.getElementById("btnSubmitP2").addEventListener("click", () => {
-          ans2 = document.getElementById("potraiAns2").value.trim();
-          if (ans2.length < 15) {
-            alert("Mohon tulis respons lanjutan minimal 15 karakter.");
-            return;
-          }
-          phase = 3;
+          clearTimer();
+          activeTab = "eval";
           draw();
         });
       } else {
-        clearTimer();
-        const btnNext = document.getElementById("btnNextPotrai");
-        if (btnNext) {
-          btnNext.addEventListener("click", () => {
-            if (idx + 1 < pool.length) {
-              idx++;
-              phase = 1;
-              ans1 = "";
-              ans2 = "";
+        document.getElementById("btnNextPotrai").addEventListener("click", () => {
+          if (idx + 1 < pool.length) {
+            idx++;
+            ws = createEmptyWorkspace(pool[idx]);
+            activeTab = "email";
+            startTimer(pool[idx].durationSec, "potraiTimer", () => {
+              activeTab = "eval";
               draw();
-            } else {
-              if (state.fullFlow) nextInFlow();
-              else renderReport();
-            }
-          });
-        }
+            });
+            draw();
+          } else {
+            if (state.fullFlow) nextInFlow();
+            else renderReport();
+          }
+        });
       }
     }
 
-    function renderPotraiEval(item, a1, a2, total, currentIdx) {
-      const combined = (a1 + " " + a2).toLowerCase();
+    function saveCurrentTabInput() {
+      const em = document.getElementById("emailReplyInput");
+      if (em) ws.emailReply = em.value;
+      const cl = document.getElementById("callRespInput");
+      if (cl) ws.callResponse = cl.value;
+      const dc = document.getElementById("docAnalysisInput");
+      if (dc) ws.docAnalysis = dc.value;
+    }
+
+    function renderTabContent(item, tab) {
+      if (tab === "email") {
+        return `
+          <div class="memo-box">
+            <div style="font-size:12px;color:var(--text-muted);"><strong>Dari:</strong> ${item.email.from}</div>
+            <h4 style="margin-top:4px;">Subjek: ${item.email.subject}</h4>
+            <div style="margin-top:8px;">${item.email.body}</div>
+          </div>
+          <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Balasan Email Anda:</label>
+          <textarea class="textarea-box" id="emailReplyInput" placeholder="Yth. Bapak/Ibu... Berikut keputusan dan arahan kami...">${ws.emailReply}</textarea>
+        `;
+      }
+      if (tab === "chat") {
+        return `
+          <div class="chat-box" id="chatBox">
+            ${ws.chatMessages
+              .map(
+                (m) => `
+              <div class="chat-msg ${m.role}">
+                <div class="chat-sender">${m.sender}</div>
+                <div>${m.text}</div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="chatInput" class="select-input" style="flex:1;" placeholder="Ketik pesan balasan role-play Anda di sini..." />
+            <button class="btn btn-primary" id="btnSendChat">Kirim</button>
+          </div>
+        `;
+      }
+      if (tab === "call") {
+        return `
+          <div class="memo-box" style="border-left-color:var(--indigo);background:#eef2ff;">
+            <h4>Live Virtual Meeting / Call: ${item.call.partnerName}</h4>
+            <p>${item.call.prompt}</p>
+          </div>
+          <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Poin Arahan / Transkrip Respon Lisan Anda:</label>
+          <textarea class="textarea-box" id="callRespInput" placeholder="Tuliskan apa yang Anda sampaikan secara langsung dalam virtual meeting ini...">${ws.callResponse}</textarea>
+        `;
+      }
+      if (tab === "documents") {
+        return `
+          <div class="memo-box" style="border-left-color:var(--emerald);background:#f0fdf4;">
+            <h4>${item.documents.title}</h4>
+            <p>${item.documents.brief}</p>
+          </div>
+          <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Dokumen Kerja / Analisa Bisnis Anda:</label>
+          <textarea class="textarea-box" id="docAnalysisInput" style="min-height:170px;" placeholder="1. Analisa Data & Risiko:\n2. Opsi & Keputusan:\n3. Rencana Aksi & Mitigasi:">${ws.docAnalysis}</textarea>
+        `;
+      }
+      if (tab === "ai") {
+        return `
+          <div class="feedback-box info" style="margin-top:0;margin-bottom:12px;">
+            <strong>Built-in AI Assistant:</strong> Gunakan alat bantu ini untuk menghitung rasio cepat atau menguji ide mitigasi risiko.
+          </div>
+          <div class="tag-row" style="margin-bottom:12px;">
+            ${item.aiHints.map((h, i) => `<button class="btn btn-outline-dark btn-sm" data-ai-hint="${i}">${h.q}</button>`).join("")}
+          </div>
+          <div class="chat-box">
+            ${ws.aiChat
+              .map(
+                (m) => `
+              <div class="chat-msg ${m.role}">
+                <div class="chat-sender">${m.role === "ai" ? "PotrAI Assistant" : "Anda"}</div>
+                <div>${m.text}</div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+      return "";
+    }
+
+    function bindTabEvents(item) {
+      const btnChat = document.getElementById("btnSendChat");
+      if (btnChat) {
+        const send = () => {
+          const inp = document.getElementById("chatInput");
+          const txt = inp.value.trim();
+          if (!txt) return;
+          ws.chatMessages.push({ sender: "Anda", role: "user", text: txt });
+          ws.chatTurn++;
+          const aiReply =
+            ws.chatTurn === 1
+              ? item.chat.followUp
+              : "Terima kasih atas penjelasannya. Posisi dan solusi Anda sudah saya catat untuk ditindaklanjuti.";
+          ws.chatMessages.push({ sender: item.chat.partnerName, role: "ai", text: aiReply });
+          draw();
+        };
+        btnChat.addEventListener("click", send);
+        document.getElementById("chatInput").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") send();
+        });
+      }
+
+      document.querySelectorAll("[data-ai-hint]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const h = item.aiHints[Number(b.getAttribute("data-ai-hint"))];
+          ws.aiChat.push({ role: "user", text: h.q });
+          ws.aiChat.push({ role: "ai", text: h.a });
+          draw();
+        });
+      });
+    }
+
+    function renderPotraiEval(item) {
+      const userChatTxt = ws.chatMessages.filter((m) => m.role === "user").map((m) => m.text).join(" ");
+      const combined = `${ws.emailReply} ${userChatTxt} ${ws.callResponse} ${ws.docAnalysis}`.toLowerCase();
       const matched = item.keywords.filter((k) => combined.includes(k));
-      const wordCount = combined.split(/\s+/).filter(Boolean).length;
-      const kwRatio = matched.length / Math.min(item.keywords.length, 7);
-      const lengthBonus = wordCount >= 80 ? 15 : wordCount >= 45 ? 8 : 0;
-      const score = Math.min(96, Math.max(45, Math.round(kwRatio * 75 + lengthBonus + 10)));
+      const modulesCompleted = [ws.emailReply, userChatTxt, ws.callResponse, ws.docAnalysis].filter((x) => x.trim().length >= 20).length;
+      const score = Math.min(97, Math.max(45, Math.round((matched.length / 7) * 55 + modulesCompleted * 10 + 5)));
 
       if (!state.flowResults.potrai) state.flowResults.potrai = [];
-      state.flowResults.potrai[currentIdx] = score;
+      state.flowResults.potrai[idx] = score;
 
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi PotrAI Simulation</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Panjang respons: ${wordCount} kata • Konsep kunci terpenuhi: ${matched.length} poin</div>
+              <strong>Evaluasi PotrAI Simulation (${modulesCompleted}/4 Modul Kerja Diisi)</strong>
+              <div style="font-size:13px;color:var(--text-muted);">Indikator kunci terpenuhi: ${matched.length} poin</div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
-          <div class="tag-row">
-            ${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}
-          </div>
+          <div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>
         </div>
-
         <div class="rubric-grid">
-          ${item.rubric
-            .map(
-              (r) => `
-            <div class="rubric-item">
-              <label>Kompetensi Dinilai</label>
-              <div style="font-size:13px;">${r}</div>
-            </div>
-          `
-            )
-            .join("")}
+          ${item.rubric.map((r) => `<div class="rubric-item"><label>Dimensi Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
         </div>
-
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
           <h4>Benchmark Jawaban Ideal (${gradeId})</h4>
           <p>${item.benchmark}</p>
         </div>
-
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextPotrai">
-            ${currentIdx + 1 < total ? "Lanjut ke Skenario Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+            ${idx + 1 < pool.length ? "Skenario Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
           </button>
         </div>
       `;
     }
 
+    startTimer(pool[0].durationSec, "potraiTimer", () => {
+      activeTab = "eval";
+      draw();
+    });
     draw();
   }
 
-  // ======================== CASE STUDY - ASYNC PRESENTATION (BOD-5) ========================
+  // ======================== CASE STUDY + ASYNC PRESENTATION (BOD-5) ========================
   function renderCaseStudy(gradeId) {
     const data = GRADES[gradeId];
     let pool = data.casestudy;
@@ -339,8 +445,12 @@
       if (filtered.length > 0) pool = filtered;
     }
     let idx = 0;
-    let stage = "prep"; // prep | present | eval
+    let stage = "written"; // written | present | eval
+    let writtenAnswers = [];
     let scriptText = "";
+    let recordedAudioUrl = null;
+    let mediaRecorder = null;
+    let isRecording = false;
 
     function draw() {
       const item = pool[idx];
@@ -348,75 +458,121 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge emerald">${data.title} • Case Study – Asynchronous Presentation</span>
+              <span class="grade-badge emerald">${data.title} • Case Study + Asynchronous Presentation</span>
               <h2 style="font-size:20px;color:var(--primary);">${item.title}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Kasus ${idx + 1} dari ${pool.length} • Fase: <strong>${stage === "prep" ? "1. Persiapan Analisis" : stage === "present" ? "2. Penyusunan / Presentasi Asinkron" : "3. Evaluasi"}</strong></div>
+              <div style="font-size:13px;color:var(--text-muted);">
+                Kasus ${idx + 1}/${pool.length} • Tahap: <strong>${stage === "written" ? "1. Jawaban Tertulis Studi Kasus" : stage === "present" ? "2. Presentasi Asinkron (Rekam Mandiri)" : "3. Evaluasi AI"}</strong>
+              </div>
             </div>
-            <div class="timer-pill" id="csTimer">05:00</div>
+            <div class="timer-pill" id="csTimer">10:00</div>
           </div>
 
           <div class="memo-box">${item.brief}</div>
 
           ${
-            stage === "prep"
+            stage === "written"
               ? `
-            <p style="font-weight:600;margin-bottom:8px;">Poin yang Wajib Ada dalam Presentasi Anda:</p>
-            <ul style="margin-left:18px;margin-bottom:14px;font-size:14px;">
-              ${item.prompts.map((p) => `<li>${p}</li>`).join("")}
-            </ul>
-            <textarea class="textarea-box" id="csDraft" placeholder="Catat poin-poin analisis dan hitungan Anda di sini sebelum masuk ke fase Presentasi Asinkron...">${scriptText}</textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-              <button class="btn btn-primary" id="btnStartPresent">Masuk Fase Presentasi Asinkron</button>
+            <p style="font-weight:700;margin-bottom:10px;">Bagian A — Jawab Pertanyaan Studi Kasus Secara Tertulis:</p>
+            ${item.writtenQuestions
+              .map(
+                (q, qi) => `
+              <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px;">${q}</label>
+                <textarea class="textarea-box cs-written-q" data-qi="${qi}" placeholder="Tuliskan analisis dan solusi Anda secara terstruktur...">${writtenAnswers[qi] || ""}</textarea>
+              </div>
+            `
+              )
+              .join("")}
+            <div style="display:flex;justify-content:flex-end;">
+              <button class="btn btn-primary" id="btnToPresent">Lanjut ke Presentasi Asinkron</button>
             </div>
           `
               : stage === "present"
               ? `
-            <div class="feedback-box info" style="margin-bottom:12px;">
-              <strong>Fase Presentasi Asinkron (Simulasi Rekam / Skrip 3 Menit):</strong> Susun narasi presentasi Anda secara jelas seolah sedang berbicara di depan kamera asesor (Pembukaan → Analisis → Solusi → Penutup).
+            <div class="feedback-box info" style="margin-top:0;margin-bottom:14px;">
+              <strong>Bagian B — Asynchronous Presentation:</strong> Sampaikan hasil analisis &amp; rekomendasi Anda secara terstruktur (Pembukaan → Analisis → Rekomendasi → Penutup). Anda dapat merekam suara langsung atau menulis skrip presentasi.
             </div>
-            <textarea class="textarea-box" id="csScript" style="min-height:200px;" placeholder="Selamat pagi Bapak/Ibu Asesor. Berikut analisis saya terkait kasus...">${scriptText}</textarea>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn ${isRecording ? "btn-danger" : "btn-outline-dark"}" id="btnRecAudio">
+                ${isRecording ? "Stop Rekaman Suara" : "Rekam Audio Presentasi (Opsional)"}
+              </button>
+              ${recordedAudioUrl ? `<audio controls src="${recordedAudioUrl}" style="height:36px;"></audio>` : ""}
+            </div>
+            <textarea class="textarea-box" id="csScript" style="min-height:170px;" placeholder="Tuliskan narasi / skrip presentasi Anda di sini...">${scriptText}</textarea>
             <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-              <button class="btn btn-accent" id="btnSubmitPresent">Kirim Presentasi Asinkron</button>
+              <button class="btn btn-accent" id="btnSubmitPresent">Kirim Jawaban &amp; Presentasi</button>
             </div>
           `
-              : renderCsEval(item, scriptText, pool.length, idx)
+              : renderCsEval(item)
           }
         </div>
       `;
 
-      if (stage === "prep") {
+      if (stage === "written") {
         startTimer(item.prepSec, "csTimer", () => {
-          scriptText = document.getElementById("csDraft")?.value || scriptText;
           stage = "present";
           draw();
         });
-        document.getElementById("btnStartPresent").addEventListener("click", () => {
-          scriptText = document.getElementById("csDraft").value;
+        document.getElementById("btnToPresent").addEventListener("click", () => {
+          document.querySelectorAll(".cs-written-q").forEach((el) => {
+            writtenAnswers[Number(el.getAttribute("data-qi"))] = el.value.trim();
+          });
+          if (writtenAnswers.join("").length < 25) {
+            alert("Mohon isi jawaban tertulis terlebih dahulu.");
+            return;
+          }
           stage = "present";
           draw();
         });
       } else if (stage === "present") {
         startTimer(item.presentSec, "csTimer", () => {
-          scriptText = document.getElementById("csScript")?.value || scriptText;
           stage = "eval";
           draw();
         });
+        const btnRec = document.getElementById("btnRecAudio");
+        btnRec.addEventListener("click", async () => {
+          if (!isRecording) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              const chunks = [];
+              mediaRecorder = new MediaRecorder(stream);
+              mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+              mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: "audio/webm" });
+                recordedAudioUrl = URL.createObjectURL(blob);
+                stream.getTracks().forEach((t) => t.stop());
+                draw();
+              };
+              mediaRecorder.start();
+              isRecording = true;
+              draw();
+            } catch {
+              alert("Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat menggunakan skrip presentasi.");
+            }
+          } else {
+            mediaRecorder.stop();
+            isRecording = false;
+          }
+        });
+
         document.getElementById("btnSubmitPresent").addEventListener("click", () => {
           scriptText = document.getElementById("csScript").value.trim();
-          if (scriptText.length < 30) {
-            alert("Mohon tulis skrip presentasi minimal 30 karakter.");
+          if (scriptText.length < 25 && !recordedAudioUrl) {
+            alert("Mohon tulis skrip presentasi atau rekam audio terlebih dahulu.");
             return;
           }
+          clearTimer();
           stage = "eval";
           draw();
         });
       } else {
-        clearTimer();
         document.getElementById("btnNextCs").addEventListener("click", () => {
           if (idx + 1 < pool.length) {
             idx++;
-            stage = "prep";
+            stage = "written";
+            writtenAnswers = [];
             scriptText = "";
+            recordedAudioUrl = null;
             draw();
           } else {
             if (state.fullFlow) nextInFlow();
@@ -426,34 +582,35 @@
       }
     }
 
-    function renderCsEval(item, txt, total, currentIdx) {
-      const lower = txt.toLowerCase();
-      const matched = item.keywords.filter((k) => lower.includes(k));
-      const words = lower.split(/\s+/).filter(Boolean).length;
-      const score = Math.min(95, Math.max(45, Math.round((matched.length / 7) * 70 + (words >= 70 ? 20 : 10))));
+    function renderCsEval(item) {
+      const combined = (writtenAnswers.join(" ") + " " + scriptText).toLowerCase();
+      const matched = item.keywords.filter((k) => combined.includes(k));
+      const words = combined.split(/\s+/).filter(Boolean).length;
+      const audioBonus = recordedAudioUrl ? 8 : 0;
+      const score = Math.min(97, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + audioBonus)));
       if (!state.flowResults.casestudy) state.flowResults.casestudy = [];
-      state.flowResults.casestudy[currentIdx] = score;
+      state.flowResults.casestudy[idx] = score;
 
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <strong>Evaluasi Case Study – Async Presentation</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Jumlah kata: ${words} • Poin kunci tercakup: ${matched.length}</div>
+              <strong>Evaluasi Case Study + Async Presentation</strong>
+              <div style="font-size:13px;color:var(--text-muted);">Total kata: ${words} • Poin kunci: ${matched.length} ${recordedAudioUrl ? "• Rekaman Audio Terlampir ✓" : ""}</div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
         </div>
         <div class="rubric-grid">
-          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kriteria Asesor</label><div style="font-size:13px;">${r}</div></div>`).join("")}
+          ${item.rubric.map((r) => `<div class="rubric-item"><label>Indikator AI Assessor</label><div style="font-size:13px;">${r}</div></div>`).join("")}
         </div>
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
-          <h4>Benchmark Presentasi Ideal (BOD-5)</h4>
+          <h4>Benchmark Jawaban &amp; Presentasi Ideal (BOD-5)</h4>
           <p>${item.benchmark}</p>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextCs">
-            ${currentIdx + 1 < total ? "Kasus Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+            ${idx + 1 < pool.length ? "Kasus Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
           </button>
         </div>
       `;
@@ -462,104 +619,99 @@
     draw();
   }
 
-  // ======================== CAP (COGNITIVE & ANALYTICAL) ========================
-  function renderCap(gradeId) {
+  // ======================== CAP — CAREER ACHIEVEMENT PORTFOLIO (STAR) ========================
+  function renderCapStar(gradeId) {
+    clearTimer();
     const data = GRADES[gradeId];
-    const questions = data.cap;
+    const items = data.cap;
     let idx = 0;
-    let selected = null;
-    let checked = false;
-    let correctCount = 0;
+    let star = { s: "", t: "", a: "", r: "" };
+    let evaluated = false;
+    let scores = [];
 
-    startTimer(questions.length * 90, "capTimer", () => {
-      state.flowResults.cap = Math.round((correctCount / questions.length) * 100);
+    startTimer(items.length * 900, "capTimer", () => {
+      state.flowResults.cap = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 65;
       if (state.fullFlow) nextInFlow();
       else renderReport();
     });
 
     function draw() {
-      const q = questions[idx];
-      const pct = Math.round(((idx + (checked ? 1 : 0)) / questions.length) * 100);
+      const item = items[idx];
+      const pct = Math.round(((idx + (evaluated ? 1 : 0)) / items.length) * 100);
 
       root.innerHTML = `
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge">${data.title} • CAP (Cognitive &amp; Analytical)</span>
-              <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">Soal ${idx + 1} dari ${questions.length} • Kategori: <strong>${q.category}</strong></div>
+              <span class="grade-badge">${data.title} • CAP (Career Achievement Portfolio)</span>
+              <h2 style="font-size:20px;color:var(--primary);">Kompetensi: ${item.competency}</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Pertanyaan ${idx + 1} dari ${items.length} • Format terstruktur berbasis pengalaman kerja (STAR)</div>
             </div>
-            <div class="timer-pill" id="capTimer">06:00</div>
+            <div class="timer-pill" id="capTimer">30:00</div>
           </div>
 
           <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
 
-          <p style="font-size:16px;font-weight:600;margin-bottom:14px;">${q.question}</p>
-
-          <div class="option-list">
-            ${q.options
-              .map((opt, i) => {
-                let cls = "option-item";
-                if (checked) {
-                  if (i === q.answer) cls += " correct";
-                  else if (i === selected) cls += " wrong";
-                } else if (i === selected) {
-                  cls += " selected";
-                }
-                const letter = String.fromCharCode(65 + i);
-                return `
-                  <div class="${cls}" data-opt="${i}">
-                    <div class="option-key">${letter}</div>
-                    <div>${opt}</div>
-                  </div>
-                `;
-              })
-              .join("")}
+          <div class="memo-box">
+            <h4>Pertanyaan Pengalaman Kerja:</h4>
+            <p>${item.prompt}</p>
           </div>
 
           ${
-            checked
+            !evaluated
               ? `
-            <div class="feedback-box ${selected === q.answer ? "" : "warn"}">
-              <strong>${selected === q.answer ? "✓ Jawaban Tepat!" : "✕ Kurang Tepat."}</strong>
-              <p style="margin-top:6px;">${q.explanation}</p>
+            <div class="star-grid">
+              <div class="star-field">
+                <label>1. Situation &amp; Challenge (Situasi &amp; Tantangan yang Dihadapi)</label>
+                <textarea class="textarea-box" id="starS" placeholder="Kapan/di mana terjadi, konteks KUR/Non-KUR, dan tantangan utamanya...">${star.s}</textarea>
+              </div>
+              <div class="star-field">
+                <label>2. Task (Peran &amp; Tanggung Jawab Anda)</label>
+                <textarea class="textarea-box" id="starT" placeholder="Apa target atau tanggung jawab spesifik Anda pada situasi tersebut...">${star.t}</textarea>
+              </div>
+              <div class="star-field">
+                <label>3. Action (Tindakan Nyata yang Anda Lakukan)</label>
+                <textarea class="textarea-box" id="starA" placeholder="Langkah konkret yang Anda ambil (gunakan kata 'Saya', bukan hanya 'Kami')...">${star.a}</textarea>
+              </div>
+              <div class="star-field">
+                <label>4. Result &amp; Achievement (Hasil &amp; Pencapaian Terukur)</label>
+                <textarea class="textarea-box" id="starR" placeholder="Dampak nyata (angka Loss Ratio, SLA, recovery subrogasi, atau perbaikan sistem)...">${star.r}</textarea>
+              </div>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-              <button class="btn btn-primary" id="btnNextCap">
-                ${idx + 1 < questions.length ? "Soal Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Hasil CAP"}
-              </button>
+              <button class="btn btn-primary" id="btnEvalCap">Analisis Bukti Perilaku (AI Assessor)</button>
             </div>
           `
-              : `
-            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-              <button class="btn btn-primary" id="btnCheckCap" ${selected === null ? "disabled" : ""}>Periksa Jawaban</button>
-            </div>
-          `
+              : renderCapEval(item)
           }
         </div>
       `;
 
-      if (!checked) {
-        document.querySelectorAll("[data-opt]").forEach((el) => {
-          el.addEventListener("click", () => {
-            selected = Number(el.getAttribute("data-opt"));
-            draw();
-          });
-        });
-        document.getElementById("btnCheckCap").addEventListener("click", () => {
-          checked = true;
-          if (selected === q.answer) correctCount++;
+      if (!evaluated) {
+        document.getElementById("btnEvalCap").addEventListener("click", () => {
+          star = {
+            s: document.getElementById("starS").value.trim(),
+            t: document.getElementById("starT").value.trim(),
+            a: document.getElementById("starA").value.trim(),
+            r: document.getElementById("starR").value.trim()
+          };
+          if (!star.s || !star.a || !star.r) {
+            alert("Mohon lengkapi minimal bagian Situation, Action, dan Result agar bukti perilaku dapat dievaluasi.");
+            return;
+          }
+          evaluated = true;
           draw();
         });
       } else {
         document.getElementById("btnNextCap").addEventListener("click", () => {
-          if (idx + 1 < questions.length) {
+          if (idx + 1 < items.length) {
             idx++;
-            selected = null;
-            checked = false;
+            star = { s: "", t: "", a: "", r: "" };
+            evaluated = false;
             draw();
           } else {
             clearTimer();
-            state.flowResults.cap = Math.round((correctCount / questions.length) * 100);
+            state.flowResults.cap = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
             if (state.fullFlow) nextInFlow();
             else renderReport();
           }
@@ -567,11 +719,42 @@
       }
     }
 
+    function renderCapEval(item) {
+      const hasFirstPerson = /\bsaya\b/i.test(star.a);
+      const hasNumbers = /\d+/.test(star.r);
+      const totalWords = `${star.s} ${star.t} ${star.a} ${star.r}`.split(/\s+/).filter(Boolean).length;
+      const completeness = [star.s, star.t, star.a, star.r].filter((x) => x.length >= 20).length;
+      const score = Math.min(96, Math.max(50, completeness * 16 + (hasFirstPerson ? 12 : 4) + (hasNumbers ? 12 : 4) + (totalWords >= 80 ? 8 : 2)));
+      scores[idx] = score;
+
+      return `
+        <div class="feedback-box">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <strong>Evaluasi Bukti Perilaku CAP (STAR)</strong>
+              <div style="font-size:13px;color:var(--text-muted);">
+                Kelengkapan STAR: ${completeness}/4 • Kepemilikan tindakan ("Saya"): ${hasFirstPerson ? "Jelas ✓" : "Perlu dipertegas"} • Hasil terukur (angka): ${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}
+              </div>
+            </div>
+            <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
+          </div>
+        </div>
+        <div class="rubric-grid">
+          ${item.indicators.map((ind) => `<div class="rubric-item"><label>Indikator Kompetensi</label><div style="font-size:13px;">${ind}</div></div>`).join("")}
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-emerald" id="btnNextCap">
+            ${idx + 1 < items.length ? "Pertanyaan CAP Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+          </button>
+        </div>
+      `;
+    }
+
     draw();
   }
 
-  // ======================== PERSONALITY TEST (BOD-3 & BOD-4) ========================
-  function renderPersonality(gradeId) {
+  // ======================== PERSONALITY TEST — 5 DIMENSI OCEAN ========================
+  function renderOceanPersonality(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
     const items = data.personality;
@@ -584,9 +767,9 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge">${data.title} • Personality Test</span>
-              <h2 style="font-size:20px;color:var(--primary);">Profil Gaya Kerja &amp; Kepemimpinan Asuransi Kredit</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Jawablah secara jujur sesuai kecenderungan perilaku kerja Anda (${answeredCount}/${items.length} terjawab).</div>
+              <span class="grade-badge">${data.title} • Personality Test (5 Dimensi OCEAN)</span>
+              <h2 style="font-size:20px;color:var(--primary);">Inventori Kepribadian Big Five (OCEAN)</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Mengukur Openness, Conscientiousness, Extraversion, Agreeableness, dan Neuroticism (${answeredCount}/${items.length} terjawab).</div>
             </div>
           </div>
 
@@ -613,7 +796,7 @@
 
           <div style="display:flex;justify-content:flex-end;margin-top:20px;">
             <button class="btn btn-primary" id="btnFinishPers" ${answeredCount < items.length ? "disabled" : ""}>
-              Selesaikan Personality Test
+              Selesaikan Personality Test (OCEAN)
             </button>
           </div>
         </div>
@@ -627,25 +810,22 @@
       });
 
       document.getElementById("btnFinishPers").addEventListener("click", () => {
-        const dims = {};
+        const dims = { Openness: [], Conscientiousness: [], Extraversion: [], Agreeableness: [], Neuroticism: [] };
         items.forEach((it) => {
           const raw = answers[it.id];
-          const score = it.reverse ? 6 - raw : raw;
-          if (!dims[it.dim]) dims[it.dim] = [];
-          dims[it.dim].push(score);
+          const val = it.reverse ? 6 - raw : raw;
+          dims[it.dim].push(val);
         });
-        const dimAvg = {};
+        const dimScore = {};
         let total = 0;
-        let count = 0;
         Object.keys(dims).forEach((d) => {
           const avg = dims[d].reduce((a, b) => a + b, 0) / dims[d].length;
-          dimAvg[d] = Math.round((avg / 5) * 100);
-          total += dimAvg[d];
-          count++;
+          dimScore[d === "Neuroticism" ? "Emotional Stability" : d] = Math.round((avg / 5) * 100);
+          total += Math.round((avg / 5) * 100);
         });
         state.flowResults.personality = {
-          overall: Math.round(total / count),
-          dimensions: dimAvg
+          overall: Math.round(total / 5),
+          dimensions: dimScore
         };
         if (state.fullFlow) nextInFlow();
         else renderReport();
@@ -664,7 +844,7 @@
     let checked = false;
     let correctCount = 0;
 
-    startTimer(items.length * 60, "psyTimer", () => {
+    startTimer(items.length * 90, "psyTimer", () => {
       state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
       if (state.fullFlow) nextInFlow();
       else renderReport();
@@ -677,18 +857,15 @@
           <div class="assess-header">
             <div>
               <span class="grade-badge emerald">${data.title} • Psychometric Test</span>
-              <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">Butir ${idx + 1} dari ${items.length} • Tipe: <strong>${q.type.toUpperCase()}</strong></div>
+              <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">Butir ${idx + 1}/${items.length} • Aspek: <strong>${q.aspect}</strong></div>
             </div>
-            <div class="timer-pill" id="psyTimer">04:00</div>
+            <div class="timer-pill" id="psyTimer">07:30</div>
           </div>
 
           <p style="font-size:16px;font-weight:600;margin-bottom:14px;">${q.question}</p>
 
           <div class="option-list">
-            ${(q.pairs
-              ? q.pairs.map((p) => `<div><strong>Sistem:</strong> ${p.left}<br/><strong>Dokumen:</strong> ${p.right}</div>`)
-              : q.options
-            )
+            ${q.options
               .map((opt, i) => {
                 let cls = "option-item";
                 if (checked) {
@@ -711,13 +888,11 @@
             checked
               ? `
             <div class="feedback-box ${selected === q.answer ? "" : "warn"}">
-              <strong>${selected === q.answer ? "✓ Tepat & Teliti!" : "✕ Perlu Lebih Teliti."}</strong>
+              <strong>${selected === q.answer ? "✓ Tepat!" : "✕ Kurang Tepat."}</strong>
               <p style="margin-top:6px;">${q.explanation}</p>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-              <button class="btn btn-primary" id="btnNextPsy">
-                ${idx + 1 < items.length ? "Soal Berikutnya" : "Lihat Hasil"}
-              </button>
+              <button class="btn btn-primary" id="btnNextPsy">${idx + 1 < items.length ? "Butir Berikutnya" : "Lihat Hasil"}</button>
             </div>
           `
               : `
@@ -773,13 +948,13 @@
     }
     if (res.casestudy) {
       const avg = Math.round(res.casestudy.reduce((a, b) => a + b, 0) / res.casestudy.length);
-      scores.push({ label: "Case Study – Async Presentation", score: avg });
+      scores.push({ label: "Case Study + Async Presentation", score: avg });
     }
     if (typeof res.cap === "number") {
-      scores.push({ label: "CAP (Cognitive & Analytical)", score: res.cap });
+      scores.push({ label: "CAP (Career Achievement Portfolio)", score: res.cap });
     }
     if (res.personality) {
-      scores.push({ label: "Personality Profile Fit", score: res.personality.overall });
+      scores.push({ label: "Personality Test (OCEAN Fit)", score: res.personality.overall });
     }
     if (typeof res.psychometric === "number") {
       scores.push({ label: "Psychometric Test", score: res.psychometric });
@@ -835,12 +1010,12 @@
             </ul>
 
             <div class="feedback-box info">
-              <strong>Rekomendasi Pengembangan (${state.selectedGrade}):</strong>
+              <strong>Rekomendasi Persiapan (${state.selectedGrade}):</strong>
               <p style="margin-top:6px;">
                 ${
                   totalAvg >= 80
-                    ? "Kesiapan Anda sangat baik. Pertahankan ketajaman analisis risiko KUR/Non-KUR dan konsistensi komunikasi lintas unit."
-                    : "Perkuat latihan perhitungan rasio teknis (Loss Ratio, Combined Ratio, Recovery Subrogasi) dan pastikan setiap keputusan manajerial menyertakan mitigasi kontrol dokumen."
+                    ? "Kesiapan Anda sangat baik. Pertahankan ketajaman bukti perilaku STAR pada CAP dan keseimbangan Risk Governance vs Bisnis pada PotrAI/Case Study."
+                    : "Perkuat penggunaan metode STAR dengan angka pencapaian konkret pada CAP, dan pastikan seluruh modul kerja pada PotrAI (Email, Chat, Call, Documents) terisi konsisten."
                 }
               </p>
             </div>
@@ -850,14 +1025,14 @@
             res.personality
               ? `
             <div style="text-align:center;">
-              <h3 style="font-size:16px;color:var(--primary);margin-bottom:8px;">Radar Profil Kepemimpinan</h3>
+              <h3 style="font-size:16px;color:var(--primary);margin-bottom:8px;">Profil 5 Dimensi OCEAN</h3>
               ${buildRadarSvg(res.personality.dimensions)}
             </div>
           `
               : `
             <div class="memo-box">
               <h4>Catatan Asesor</h4>
-              <p>Untuk gambaran kompetensi menyeluruh sesuai standar kantor, jalankan <strong>Simulasi Lengkap</strong> agar seluruh 3 metode pada grade ${state.selectedGrade} terukur bersamaan.</p>
+              <p>Jalankan <strong>Simulasi Lengkap (${state.selectedGrade})</strong> untuk melihat profil gabungan seluruh 3 metode asesmen.</p>
             </div>
           `
           }
@@ -878,9 +1053,9 @@
     const keys = Object.keys(dims);
     const n = keys.length;
     if (n < 3) return "";
-    const cx = 160,
+    const cx = 165,
       cy = 140,
-      r = 95;
+      r = 90;
     const angleStep = (Math.PI * 2) / n;
 
     const rings = [0.25, 0.5, 0.75, 1].map((scale) => {
@@ -897,7 +1072,7 @@
       const a = -Math.PI / 2 + i * angleStep;
       const x = cx + r * Math.cos(a);
       const y = cy + r * Math.sin(a);
-      const lx = cx + (r + 22) * Math.cos(a);
+      const lx = cx + (r + 26) * Math.cos(a);
       const ly = cy + (r + 18) * Math.sin(a);
       return `
         <line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#cbd5e1" stroke-width="1"/>
@@ -914,7 +1089,7 @@
       .join(" ");
 
     return `
-      <svg viewBox="0 0 320 280" style="max-width:340px;width:100%;">
+      <svg viewBox="0 0 330 280" style="max-width:350px;width:100%;">
         ${rings.join("")}
         ${axes.join("")}
         <polygon points="${dataPts}" fill="rgba(15, 44, 89, 0.25)" stroke="#0f2c59" stroke-width="2.5"/>
@@ -968,7 +1143,7 @@
     `;
     document.getElementById("btnHistBack").addEventListener("click", renderHome);
     document.getElementById("btnClearHist").addEventListener("click", () => {
-      localStorage.removeItem("askrindo_sim_history_v1");
+      localStorage.removeItem("askrindo_sim_history_v2");
       renderHistory();
     });
   }
