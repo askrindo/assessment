@@ -62,6 +62,7 @@
     currentUser: loadSession(),
     selectedGrade: "BOD-4",
     unitFilter: "Semua",
+    examMode: "quick", // quick | full
     participantName: "",
     participantNip: "",
     supaConnected: false,
@@ -340,6 +341,11 @@
           <select id="unitSelect" class="select-input">
             ${renderUnitOptions(state.unitFilter, true)}
           </select>
+          <label for="modeSelect">Mode Waktu:</label>
+          <select id="modeSelect" class="select-input">
+            <option value="quick" ${state.examMode === "quick" ? "selected" : ""}>Latihan Cepat (Ringkas ~15–45 mnt)</option>
+            <option value="full" ${state.examMode === "full" ? "selected" : ""}>Simulasi Penuh (Standar Asli 180–240 mnt)</option>
+          </select>
         </div>
       </div>
 
@@ -352,6 +358,9 @@
 
     document.getElementById("unitSelect").addEventListener("change", (e) => {
       state.unitFilter = e.target.value;
+    });
+    document.getElementById("modeSelect").addEventListener("change", (e) => {
+      state.examMode = e.target.value;
     });
 
     document.querySelectorAll("[data-start-full]").forEach((btn) => {
@@ -445,7 +454,11 @@
   // ======================== POTRAI 5-MODUL WORKSPACE (BOD-3 & BOD-4) ========================
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
-    let pool = shuffleArray(filterPoolByUnit(data.potrai, state.unitFilter)).slice(0, 2);
+    const isFull = state.examMode === "full";
+    let pool = shuffleArray(filterPoolByUnit(data.potrai, state.unitFilter)).slice(0, isFull ? 3 : 2);
+    if (isFull) {
+      pool = pool.map((p) => ({ ...p, durationSec: 3600 })); // 60 mnt/skenario x 3 = 180 mnt
+    }
     if (typeof window.renderPortraiVirtualOffice === "function") {
       window.renderPortraiVirtualOffice({
         root,
@@ -744,7 +757,11 @@
   // ======================== CASE STUDY + ASYNC PRESENTATION (BOD-5) ========================
   function renderCaseStudy(gradeId) {
     const data = GRADES[gradeId];
+    const isFull = state.examMode === "full";
     let pool = shuffleArray(filterPoolByUnit(data.casestudy, state.unitFilter)).slice(0, 2);
+    if (isFull) {
+      pool = pool.map((c) => ({ ...c, prepSec: 4500, presentSec: 1200 })); // (75+20) x 2 = 190 mnt
+    }
     let idx = 0;
     let stage = "written"; // written | present | eval
     let writtenAnswers = [];
@@ -924,13 +941,14 @@
   function renderCapStar(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
-    const items = shuffleArray(data.cap).slice(0, 2);
+    const isFull = state.examMode === "full";
+    const items = shuffleArray(data.cap).slice(0, isFull ? 4 : 2);
     let idx = 0;
     let star = { s: "", t: "", a: "", r: "" };
     let evaluated = false;
     let scores = [];
 
-    startTimer(items.length * 900, "capTimer", () => {
+    startTimer(isFull ? 4500 : items.length * 900, "capTimer", () => {
       state.flowResults.cap = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 65;
       if (state.fullFlow) nextInFlow();
       else renderReport();
@@ -1058,9 +1076,37 @@
   function renderOceanPersonality(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
+    const isFull = state.examMode === "full";
     const items = shuffleArray(data.personality);
     const answers = {};
     const labels = ["Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
+
+    function finishOcean() {
+      clearTimer();
+      const dims = { Openness: [], Conscientiousness: [], Extraversion: [], Agreeableness: [], Neuroticism: [] };
+      items.forEach((it) => {
+        const raw = answers[it.id] || 3;
+        const val = it.reverse ? 6 - raw : raw;
+        dims[it.dim].push(val);
+      });
+      const dimScore = {};
+      let total = 0;
+      Object.keys(dims).forEach((d) => {
+        const avg = dims[d].reduce((a, b) => a + b, 0) / dims[d].length;
+        dimScore[d === "Neuroticism" ? "Emotional Stability" : d] = Math.round((avg / 5) * 100);
+        total += Math.round((avg / 5) * 100);
+      });
+      state.flowResults.personality = {
+        overall: Math.round(total / 5),
+        dimensions: dimScore
+      };
+      if (state.fullFlow) nextInFlow();
+      else renderReport();
+    }
+
+    if (isFull) {
+      startTimer(2400, "oceanTimer", finishOcean); // 40 menit standar asli
+    }
 
     function draw() {
       const answeredCount = Object.keys(answers).length;
@@ -1072,6 +1118,7 @@
               <h2 style="font-size:20px;color:var(--primary);">Inventori Kepribadian Big Five (OCEAN)</h2>
               <div style="font-size:13px;color:var(--text-muted);">Mengukur Openness, Conscientiousness, Extraversion, Agreeableness, dan Neuroticism (${answeredCount}/${items.length} terjawab).</div>
             </div>
+            ${isFull ? `<div class="timer-pill" id="oceanTimer">40:00</div>` : ""}
           </div>
 
           ${items
@@ -1139,13 +1186,14 @@
   // ======================== PSYCHOMETRIC TEST (BOD-5) ========================
   function renderPsychometric(gradeId) {
     const data = GRADES[gradeId];
-    const items = shuffleArray(data.psychometric).slice(0, 6).map(shuffleQuizOptions);
+    const isFull = state.examMode === "full";
+    const items = shuffleArray(data.psychometric).slice(0, isFull ? 10 : 6).map(shuffleQuizOptions);
     let idx = 0;
     let selected = null;
     let checked = false;
     let correctCount = 0;
 
-    startTimer(items.length * 90, "psyTimer", () => {
+    startTimer(isFull ? 7200 : items.length * 90, "psyTimer", () => {
       state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
       if (state.fullFlow) nextInFlow();
       else renderReport();
