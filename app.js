@@ -777,8 +777,11 @@
     let writtenAnswers = [];
     let scriptText = "";
     let recordedAudioUrl = null;
+    let recordedVideoUrl = null;
+    let activeStream = null;
     let mediaRecorder = null;
     let isRecording = false;
+    let recMode = "video"; // video | audio
 
     function draw() {
       const item = pool[idx];
@@ -818,15 +821,40 @@
               : stage === "present"
               ? `
             <div class="feedback-box info" style="margin-top:0;margin-bottom:14px;">
-              <strong>Bagian B — Asynchronous Presentation:</strong> Sampaikan hasil analisis &amp; rekomendasi Anda secara terstruktur (Pembukaan → Analisis → Rekomendasi → Penutup). Anda dapat merekam suara langsung atau menulis skrip presentasi.
+              <strong>Bagian B — Asynchronous Presentation (Kamera + Suara):</strong> Sampaikan hasil analisis &amp; rekomendasi Anda secara terstruktur (Pembukaan → Analisis → Rekomendasi → Penutup) menghadap kamera seperti ujian aslinya.
             </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-              <button class="btn ${isRecording ? "btn-danger" : "btn-outline-dark"}" id="btnRecAudio">
-                ${isRecording ? "Stop Rekaman Suara" : "Rekam Audio Presentasi (Opsional)"}
+              <button class="btn ${isRecording && recMode === "video" ? "btn-danger" : "btn-primary"}" id="btnRecVideo" ${isRecording && recMode !== "video" ? "disabled" : ""}>
+                ${isRecording && recMode === "video" ? "⏹ Stop Rekaman Video" : "🎥 Rekam Video Kamera + Suara"}
               </button>
-              ${recordedAudioUrl ? `<audio controls src="${recordedAudioUrl}" style="height:36px;"></audio>` : ""}
+              <button class="btn ${isRecording && recMode === "audio" ? "btn-danger" : "btn-outline-dark"}" id="btnRecAudio" ${isRecording && recMode !== "audio" ? "disabled" : ""}>
+                ${isRecording && recMode === "audio" ? "⏹ Stop Rekaman Audio" : "🎙️ Rekam Audio Saja"}
+              </button>
             </div>
-            <textarea class="textarea-box" id="csScript" style="min-height:170px;" placeholder="Tuliskan narasi / skrip presentasi Anda di sini...">${scriptText}</textarea>
+            ${
+              isRecording && recMode === "video"
+                ? `<div style="margin-bottom:12px;text-align:center;background:#0f172a;padding:10px;border-radius:12px;">
+                     <div style="color:#f87171;font-size:12px;font-weight:700;margin-bottom:6px;">● SEDANG MEREKAM VIDEO PRESENTASI...</div>
+                     <video id="csLivePreview" autoplay muted playsinline style="max-width:420px;width:100%;border-radius:10px;background:#000;"></video>
+                   </div>`
+                : ""
+            }
+            ${
+              recordedVideoUrl && !isRecording
+                ? `<div style="margin-bottom:12px;background:#f8fafc;padding:10px;border-radius:12px;border:1px solid var(--border);">
+                     <div style="font-size:12px;font-weight:700;color:var(--emerald-dark);margin-bottom:6px;">✓ Rekaman Video Presentasi Tersimpan (Pratinjau):</div>
+                     <video controls src="${recordedVideoUrl}" style="max-width:420px;width:100%;border-radius:10px;background:#000;"></video>
+                   </div>`
+                : ""
+            }
+            ${
+              recordedAudioUrl && !isRecording
+                ? `<div style="margin-bottom:12px;">
+                     <audio controls src="${recordedAudioUrl}" style="height:36px;width:100%;max-width:420px;"></audio>
+                   </div>`
+                : ""
+            }
+            <textarea class="textarea-box" id="csScript" style="min-height:150px;" placeholder="Tuliskan poin skrip / ringkasan presentasi Anda di sini...">${scriptText}</textarea>
             <div style="display:flex;justify-content:flex-end;margin-top:14px;">
               <button class="btn btn-accent" id="btnSubmitPresent">Kirim Jawaban &amp; Presentasi</button>
             </div>
@@ -857,36 +885,60 @@
           stage = "eval";
           draw();
         });
-        const btnRec = document.getElementById("btnRecAudio");
-        btnRec.addEventListener("click", async () => {
+        if (isRecording && recMode === "video" && activeStream) {
+          const vidEl = document.getElementById("csLivePreview");
+          if (vidEl) vidEl.srcObject = activeStream;
+        }
+
+        async function toggleRecord(mode) {
           if (!isRecording) {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              const constraints = mode === "video" ? { video: true, audio: true } : { audio: true };
+              const stream = await navigator.mediaDevices.getUserMedia(constraints);
+              activeStream = stream;
+              recMode = mode;
               const chunks = [];
               mediaRecorder = new MediaRecorder(stream);
-              mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+              mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+              };
               mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: "audio/webm" });
-                recordedAudioUrl = URL.createObjectURL(blob);
+                const mime = mode === "video" ? "video/webm" : "audio/webm";
+                const blob = new Blob(chunks, { type: mime });
+                if (mode === "video") {
+                  recordedVideoUrl = URL.createObjectURL(blob);
+                  recordedAudioUrl = null;
+                } else {
+                  recordedAudioUrl = URL.createObjectURL(blob);
+                  recordedVideoUrl = null;
+                }
                 stream.getTracks().forEach((t) => t.stop());
+                activeStream = null;
                 draw();
               };
               mediaRecorder.start();
               isRecording = true;
               draw();
             } catch {
-              alert("Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat menggunakan skrip presentasi.");
+              alert(
+                mode === "video"
+                  ? "Kamera/Mikrofon tidak tersedia atau izin ditolak. Anda bisa mencoba Rekam Audio Saja atau menulis skrip."
+                  : "Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat menggunakan skrip presentasi."
+              );
             }
           } else {
             mediaRecorder.stop();
             isRecording = false;
           }
-        });
+        }
+
+        document.getElementById("btnRecVideo").addEventListener("click", () => toggleRecord("video"));
+        document.getElementById("btnRecAudio").addEventListener("click", () => toggleRecord("audio"));
 
         document.getElementById("btnSubmitPresent").addEventListener("click", () => {
           scriptText = document.getElementById("csScript").value.trim();
-          if (scriptText.length < 25 && !recordedAudioUrl) {
-            alert("Mohon tulis skrip presentasi atau rekam audio terlebih dahulu.");
+          if (scriptText.length < 25 && !recordedAudioUrl && !recordedVideoUrl) {
+            alert("Mohon tulis skrip presentasi atau rekam video/audio terlebih dahulu.");
             return;
           }
           clearTimer();
@@ -901,6 +953,7 @@
             writtenAnswers = [];
             scriptText = "";
             recordedAudioUrl = null;
+            recordedVideoUrl = null;
             draw();
           } else {
             if (state.fullFlow) nextInFlow();
@@ -914,8 +967,8 @@
       const combined = (writtenAnswers.join(" ") + " " + scriptText).toLowerCase();
       const matched = item.keywords.filter((k) => combined.includes(k));
       const words = combined.split(/\s+/).filter(Boolean).length;
-      const audioBonus = recordedAudioUrl ? 8 : 0;
-      const score = Math.min(97, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + audioBonus)));
+      const mediaBonus = recordedVideoUrl ? 10 : recordedAudioUrl ? 8 : 0;
+      const score = Math.min(98, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + mediaBonus)));
       if (!state.flowResults.casestudy) state.flowResults.casestudy = [];
       state.flowResults.casestudy[idx] = score;
 
@@ -924,7 +977,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <strong>Evaluasi Case Study + Async Presentation</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Total kata: ${words} • Poin kunci: ${matched.length} ${recordedAudioUrl ? "• Rekaman Audio Terlampir ✓" : ""}</div>
+              <div style="font-size:13px;color:var(--text-muted);">Total kata: ${words} • Poin kunci: ${matched.length} ${recordedVideoUrl ? "• Rekaman Video Tersimpan ✓" : recordedAudioUrl ? "• Rekaman Audio Tersimpan ✓" : ""}</div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
