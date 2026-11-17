@@ -170,6 +170,7 @@
       root.innerHTML = `
         <div class="card" style="max-width:480px;margin:30px auto;">
           <div style="text-align:center;margin-bottom:20px;">
+            <img src="ASKRINDO Assessment Logo.png" alt="Logo Assessment" style="display:block;margin:0 auto 14px;max-width:220px;width:100%;height:auto;object-fit:contain;" />
             <span class="grade-badge">Asuransi Kredit Indonesia</span>
             <h2 style="font-size:22px;color:var(--primary);margin-bottom:4px;">${mode === "login" ? "Masuk ke Portal Asesmen" : "Daftar Akun Pegawai Baru"}</h2>
             <p style="font-size:13px;color:var(--text-muted);">Gunakan NIP / Username Anda untuk memulai simulasi atau mengelola data pegawai.</p>
