@@ -134,11 +134,11 @@
       try {
         const pwHash = await hashPassword(password);
         const rows = await rest(
-          `app_users?select=id,nip,full_name,role,grade,unit,is_active,password_hash&nip=eq.${encodeURIComponent(nip.trim())}&limit=1`
+          `app_users?select=id,nip,full_name,role,grade,unit,is_active,allow_all_grades,password_hash&nip=eq.${encodeURIComponent(nip.trim())}&limit=1`
         );
         const data = rows && rows[0];
         if (!data) return { ok: false, reason: "NIP / Username tidak ditemukan." };
-        if (!data.is_active) return { ok: false, reason: "Akun Anda sedang dinonaktifkan oleh Admin." };
+        if (!data.is_active) return { ok: false, reason: "Akun Anda belum diverifikasi atau sedang dinonaktifkan oleh Admin." };
         if (data.password_hash !== pwHash) return { ok: false, reason: "Password salah." };
 
         return {
@@ -149,7 +149,8 @@
             full_name: data.full_name,
             role: data.role,
             grade: data.grade,
-            unit: data.unit
+            unit: data.unit,
+            allow_all_grades: Boolean(data.allow_all_grades)
           }
         };
       } catch (err) {
@@ -157,13 +158,13 @@
       }
     },
 
-    async createUser({ nip, full_name, password, role = "pegawai", grade = "BOD-4", unit = "Underwriting & Klaim", is_active = true }) {
+    async createUser({ nip, full_name, password, role = "pegawai", grade = "BOD-4", unit = "Underwriting", is_active = true, allow_all_grades = false }) {
       try {
         const pwHash = await hashPassword(password);
         const rows = await rest("app_users", {
           method: "POST",
           headers: { Prefer: "return=representation" },
-          body: JSON.stringify([{ nip: nip.trim(), full_name: full_name.trim(), password_hash: pwHash, role, grade, unit, is_active }])
+          body: JSON.stringify([{ nip: nip.trim(), full_name: full_name.trim(), password_hash: pwHash, role, grade, unit, is_active, allow_all_grades }])
         });
         return { ok: true, user: rows && rows[0] };
       } catch (err) {
@@ -173,7 +174,7 @@
 
     async fetchAllUsers() {
       try {
-        const data = await rest("app_users?select=id,created_at,nip,full_name,role,grade,unit,is_active&order=created_at.desc");
+        const data = await rest("app_users?select=id,created_at,nip,full_name,role,grade,unit,is_active,allow_all_grades&order=created_at.desc");
         return { ok: true, data: data || [] };
       } catch (err) {
         return { ok: false, data: [], reason: err.message };

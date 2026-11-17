@@ -297,20 +297,24 @@
           const btn = document.getElementById("btnDoReg");
           btn.disabled = true;
           btn.textContent = "Mendaftar...";
-          const res = await window.SupabaseService.createUser({ nip, full_name, password, role: "pegawai", grade, unit });
+          const res = await window.SupabaseService.createUser({
+            nip,
+            full_name,
+            password,
+            role: "pegawai",
+            grade,
+            unit,
+            is_active: false,
+            allow_all_grades: false
+          });
           if (!res.ok) {
             msg = res.reason;
             draw();
             return;
           }
-          state.currentUser = res.user;
-          state.selectedGrade = res.user.grade;
-          state.unitFilter = res.user.unit;
-          state.participantName = res.user.full_name;
-          state.participantNip = res.user.nip;
-          localStorage.setItem("askrindo_session_v1", JSON.stringify(res.user));
-          updateTopbarSession();
-          renderHome();
+          mode = "login";
+          msg = `✓ Pendaftaran untuk NIP ${nip} (${full_name}) berhasil! Akun Anda menunggu verifikasi & aktivasi oleh Admin sebelum dapat login.`;
+          draw();
         });
         document.getElementById("linkToLogin").addEventListener("click", (e) => {
           e.preventDefault();
@@ -358,9 +362,19 @@
       </div>
 
       <div class="grid-3">
-        ${renderGradeCard("BOD-3", "Grade 15–16", "145 Pegawai", "amber")}
-        ${renderGradeCard("BOD-4", "Grade 12–14", "523 Pegawai", "")}
-        ${renderGradeCard("BOD-5", "Grade 8–11", "253 Pegawai", "emerald")}
+        ${
+          state.currentUser.role === "admin" || state.currentUser.allow_all_grades
+            ? `
+              ${renderGradeCard("BOD-3", "Grade 15–16", "145 Pegawai", "amber")}
+              ${renderGradeCard("BOD-4", "Grade 12–14", "523 Pegawai", "")}
+              ${renderGradeCard("BOD-5", "Grade 8–11", "253 Pegawai", "emerald")}
+            `
+            : state.currentUser.grade === "BOD-3"
+            ? renderGradeCard("BOD-3", "Grade 15–16", "145 Pegawai", "amber")
+            : state.currentUser.grade === "BOD-5"
+            ? renderGradeCard("BOD-5", "Grade 8–11", "253 Pegawai", "emerald")
+            : renderGradeCard("BOD-4", "Grade 12–14", "523 Pegawai", "")
+        }
       </div>
     `;
 
@@ -416,7 +430,17 @@
     `;
   }
 
+  function isGradeAllowed(gradeId) {
+    if (!state.currentUser) return false;
+    if (state.currentUser.role === "admin" || state.currentUser.allow_all_grades) return true;
+    return state.currentUser.grade === gradeId;
+  }
+
   function startFullAssessment(gradeId) {
+    if (!isGradeAllowed(gradeId)) {
+      alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
+      return;
+    }
     state.selectedGrade = gradeId;
     state.fullFlow = true;
     state.flowResults = {};
@@ -433,6 +457,10 @@
   }
 
   function launchMethod(gradeId, methodId) {
+    if (!isGradeAllowed(gradeId)) {
+      alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
+      return;
+    }
     if (methodId === "potrai") renderPotrai(gradeId);
     else if (methodId === "casestudy") renderCaseStudy(gradeId);
     else if (methodId === "cap") renderCapStar(gradeId);
@@ -1722,7 +1750,10 @@
                   <option value="admin">Role: Admin</option>
                 </select>
               </div>
-              <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+              <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                  <input type="checkbox" id="newAllGrades" /> Izinkan akses semua grade (BOD-3, BOD-4, BOD-5)
+                </label>
                 <button class="btn btn-emerald btn-sm" id="btnAddUser">+ Tambah User</button>
               </div>
             </div>
@@ -1740,7 +1771,7 @@
             <div style="overflow-x:auto;">
               <table class="data-table">
                 <thead>
-                  <tr><th>NIP</th><th>Nama Lengkap</th><th>Grade</th><th>Unit</th><th>Role</th><th>Status</th><th>Aksi</th></tr>
+                  <tr><th>NIP</th><th>Nama Lengkap</th><th>Grade</th><th>Semua Grade</th><th>Unit</th><th>Role</th><th>Status</th><th>Aksi</th></tr>
                 </thead>
                 <tbody>
                   ${filteredUsers
@@ -1756,6 +1787,9 @@
                           <option value="BOD-4" ${u.grade === "BOD-4" ? "selected" : ""}>BOD-4</option>
                           <option value="BOD-5" ${u.grade === "BOD-5" ? "selected" : ""}>BOD-5</option>
                         </select>
+                      </td>
+                      <td style="text-align:center;">
+                        <input type="checkbox" id="editAllGrades" ${u.allow_all_grades ? "checked" : ""} title="Izinkan semua grade" />
                       </td>
                       <td>
                         <select id="editUnit" class="select-input" style="min-width:140px;padding:4px 6px;">
@@ -1785,10 +1819,12 @@
                       <td><strong>${u.nip}</strong></td>
                       <td>${u.full_name}</td>
                       <td>${u.grade}</td>
+                      <td style="text-align:center;">${u.allow_all_grades ? `<span class="pill pill-green">✓ Ya</span>` : `<span style="color:var(--text-muted);">Hanya ${u.grade}</span>`}</td>
                       <td>${u.unit}</td>
                       <td><span class="pill ${u.role === "admin" ? "pill-amber" : "pill-green"}">${u.role}</span></td>
-                      <td>${u.is_active ? "Aktif" : "<span style='color:var(--rose);font-weight:700;'>Nonaktif</span>"}</td>
+                      <td>${u.is_active ? `<span class="pill pill-green">Aktif</span>` : `<span class="pill pill-red">Menunggu Verifikasi</span>`}</td>
                       <td style="white-space:nowrap;">
+                        ${!u.is_active ? `<button class="btn btn-emerald btn-sm" data-verify-user="${u.id}" data-nip="${u.nip}">✓ Verifikasi</button>` : ""}
                         <button class="btn btn-outline-dark btn-sm" data-edit-user="${u.id}">Edit</button>
                         <button class="btn btn-outline-dark btn-sm" data-reset-pw="${u.id}" data-nip="${u.nip}">Reset PW</button>
                         ${u.nip !== state.currentUser.nip ? `<button class="btn btn-danger btn-sm" data-del-user="${u.id}" data-nip="${u.nip}">Hapus</button>` : ""}
@@ -1870,14 +1906,25 @@
           const grade = document.getElementById("newGrade").value;
           const unit = document.getElementById("newUnit").value;
           const role = document.getElementById("newRole").value;
+          const allow_all_grades = document.getElementById("newAllGrades").checked;
           if (!nip || !full_name || password.length < 6) {
             statusMsg = "NIP, Nama Lengkap, dan Password (min. 6 karakter) wajib diisi.";
             draw();
             return;
           }
-          const res = await window.SupabaseService.createUser({ nip, full_name, password, role, grade, unit });
+          const res = await window.SupabaseService.createUser({ nip, full_name, password, role, grade, unit, is_active: true, allow_all_grades });
           statusMsg = res.ok ? `✓ User ${nip} (${full_name}) berhasil ditambahkan.` : `✕ Gagal: ${res.reason}`;
           await loadData();
+        });
+
+        document.querySelectorAll("[data-verify-user]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-verify-user");
+            const nip = b.getAttribute("data-nip");
+            const res = await window.SupabaseService.updateUser(id, { is_active: true });
+            statusMsg = res.ok ? `✓ Akun ${nip} berhasil diverifikasi & diaktifkan.` : `✕ Gagal verifikasi: ${res.reason}`;
+            await loadData();
+          });
         });
 
         document.querySelectorAll("[data-edit-user]").forEach((b) => {
@@ -1901,6 +1948,7 @@
             const res = await window.SupabaseService.updateUser(id, {
               full_name: document.getElementById("editName").value.trim(),
               grade: document.getElementById("editGrade").value,
+              allow_all_grades: document.getElementById("editAllGrades").checked,
               unit: document.getElementById("editUnit").value.trim(),
               role: document.getElementById("editRole").value,
               is_active: document.getElementById("editActive").value === "true"

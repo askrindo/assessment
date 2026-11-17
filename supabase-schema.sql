@@ -32,8 +32,11 @@ create table if not exists public.app_users (
   role text not null default 'pegawai' check (role in ('admin', 'pegawai')),
   grade text not null default 'BOD-4' check (grade in ('BOD-3', 'BOD-4', 'BOD-5')),
   unit text not null default 'Underwriting & Klaim',
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  allow_all_grades boolean not null default false
 );
+
+alter table public.app_users add column if not exists allow_all_grades boolean not null default false;
 
 alter table public.app_users enable row level security;
 
