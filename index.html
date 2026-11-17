@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulasi Asesmen Pegawai — Asuransi Kredit Indonesia (KUR & Non-KUR)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Navigation -->
+    <header class="topbar">
+      <div class="brand" id="btnHome" role="button" tabindex="0">
+        <div class="brand-logo">AK</div>
+        <div>
+          <div class="brand-title">Simulasi Asesmen Terpadu</div>
+          <div class="brand-sub">Asuransi Kredit Indonesia • KUR, Suretyship & Asuransi Umum</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" id="btnHistory">Riwayat Skor</button>
+        <button class="btn btn-outline btn-sm" id="btnResetHome">Beranda</button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container" id="appRoot">
+      <!-- Rendered dynamically by app.js -->
+    </main>
+  </div>
+
+  <!-- Data & App Scripts -->
+  <script src="data/questions-bod3.js"></script>
+  <script src="data/questions-bod4.js"></script>
+  <script src="data/questions-bod5.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
