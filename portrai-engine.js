@@ -13,6 +13,137 @@
     let idx = 0;
     let activeMod = "email"; // email | chat | call | documents | eval
     let ws = createWorkspace(pool[0]);
+    let ringtoneInterval = null;
+    let ringAudioCtx = null;
+    let callTriggerTimeout = null;
+    let callDurationInterval = null;
+
+    function playRingBeep() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!ringAudioCtx) ringAudioCtx = new AC();
+        if (ringAudioCtx.state === "suspended") ringAudioCtx.resume();
+        const now = ringAudioCtx.currentTime;
+        [0, 0.22].forEach((offset) => {
+          const osc = ringAudioCtx.createOscillator();
+          const gain = ringAudioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(offset === 0 ? 523.25 : 659.25, now + offset);
+          gain.gain.setValueAtTime(0.08, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+          osc.connect(gain);
+          gain.connect(ringAudioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.19);
+        });
+      } catch {
+        // ignore audio autoplay restrictions
+      }
+    }
+
+    function startRingtone() {
+      stopRingtone();
+      playRingBeep();
+      ringtoneInterval = setInterval(playRingBeep, 1800);
+    }
+
+    function stopRingtone() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
+    }
+
+    function speakIndonesian(text) {
+      try {
+        if (!("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang = "id-ID";
+        utt.rate = 1.02;
+        window.speechSynthesis.speak(utt);
+      } catch {
+        // ignore speech errors
+      }
+    }
+
+    function stopCallTimers() {
+      if (callTriggerTimeout) {
+        clearTimeout(callTriggerTimeout);
+        callTriggerTimeout = null;
+      }
+      if (callDurationInterval) {
+        clearInterval(callDurationInterval);
+        callDurationInterval = null;
+      }
+      stopRingtone();
+    }
+
+    function scheduleIncomingCall(delayMs = 20000) {
+      if (callTriggerTimeout) clearTimeout(callTriggerTimeout);
+      if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
+      callTriggerTimeout = setTimeout(() => {
+        if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
+        ws.incomingCallActive = true;
+        ws.incomingCallShown = true;
+        startRingtone();
+        renderIncomingCallPopup(pool[idx]);
+      }, delayMs);
+    }
+
+    function renderIncomingCallPopup(item) {
+      const existing = document.getElementById("incomingCallPopup");
+      if (existing) existing.remove();
+      if (!ws.incomingCallActive) return;
+
+      const div = document.createElement("div");
+      div.id = "incomingCallPopup";
+      div.className = "incoming-call-toast";
+      div.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="incoming-call-pulse">📞</div>
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#7dd3fc;font-weight:700;">Panggilan Masuk Virtual</div>
+            <div style="font-size:15px;font-weight:800;">${item.call.partnerName}</div>
+            <div style="font-size:12px;color:#cbd5e1;">Membutuhkan arahan Anda segera</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-emerald btn-sm" style="flex:1;" id="btnAnswerIncoming">Angkat Panggilan</button>
+          <button class="btn btn-danger btn-sm" id="btnDismissIncoming">Tunda</button>
+        </div>
+      `;
+      document.body.appendChild(div);
+
+      document.getElementById("btnAnswerIncoming").addEventListener("click", () => {
+        ws.incomingCallActive = false;
+        stopRingtone();
+        div.remove();
+        saveDrafts();
+        activeMod = "call";
+        ws.callStarted = true;
+        if (!callDurationInterval) {
+          callDurationInterval = setInterval(() => {
+            ws.callSeconds++;
+            const el = document.getElementById("callElapsedEl");
+            if (el) {
+              const mm = String(Math.floor(ws.callSeconds / 60)).padStart(2, "0");
+              const ss = String(ws.callSeconds % 60).padStart(2, "0");
+              el.textContent = `${mm}:${ss}`;
+            }
+          }, 1000);
+        }
+        draw();
+        speakIndonesian(item.call.prompt);
+      });
+
+      document.getElementById("btnDismissIncoming").addEventListener("click", () => {
+        ws.incomingCallActive = false;
+        stopRingtone();
+        div.remove();
+      });
+    }
 
     function createWorkspace(item) {
       return {
@@ -21,8 +152,11 @@
         emailSent: false,
         chatMessages: [{ sender: item.chat.partnerName, role: "ai", text: item.chat.opening }],
         chatTurn: 0,
+        incomingCallActive: false,
+        incomingCallShown: false,
         callStarted: false,
         callEnded: false,
+        callSeconds: 0,
         callResponse: "",
         callAiProbe: "",
         docExecSummary: "",
@@ -46,6 +180,9 @@
       const docDone = (ws.docExecSummary + ws.docAnalysis + ws.docActionPlan).trim().length >= 30;
 
       if (activeMod === "eval") {
+        stopCallTimers();
+        const pop = document.getElementById("incomingCallPopup");
+        if (pop) pop.remove();
         root.innerHTML = `<div class="card">${renderEval(item)}</div>`;
         document.getElementById("btnNextPortrai").addEventListener("click", () => {
           if (idx + 1 < pool.length) {
@@ -56,6 +193,7 @@
               activeMod = "eval";
               draw();
             });
+            scheduleIncomingCall(20000);
             draw();
           } else {
             if (state.fullFlow) nextInFlow();
@@ -236,7 +374,7 @@
         return `
           <div class="call-stage">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <span class="pill pill-green">${ws.callStarted ? "● Live Virtual Call Berlangsung" : "Panggilan Virtual Siap"}</span>
+              <span class="pill pill-green">${ws.callStarted ? "● Live Virtual Call • <span id='callElapsedEl'>" + String(Math.floor(ws.callSeconds / 60)).padStart(2, "0") + ":" + String(ws.callSeconds % 60).padStart(2, "0") + "</span>" : "Panggilan Virtual Siap"}</span>
               <span style="font-size:12px;color:#cbd5e1;">${item.call.partnerName}</span>
             </div>
             <div class="call-tiles">
@@ -339,6 +477,7 @@
             return;
           }
           ws.emailSent = true;
+          scheduleIncomingCall(3000);
           draw();
         });
       }
@@ -510,6 +649,7 @@
       activeMod = "eval";
       draw();
     });
+    scheduleIncomingCall(20000);
     draw();
   };
 })();

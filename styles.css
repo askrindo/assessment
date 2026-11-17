@@ -1039,3 +1039,44 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ======================== INCOMING CALL POPUP ======================== */
+.incoming-call-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: linear-gradient(135deg, #071b42 0%, #102a5c 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 20px 45px rgba(7, 27, 66, 0.45);
+  z-index: 999;
+  animation: callSlideIn 0.3s ease-out;
+}
+
+.incoming-call-pulse {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  animation: ringPulse 1.2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ringPulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes callSlideIn {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
