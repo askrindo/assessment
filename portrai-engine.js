@@ -55,14 +55,46 @@
       }
     }
 
+    function getIndonesianVoices() {
+      if (!("speechSynthesis" in window)) return [];
+      const all = window.speechSynthesis.getVoices() || [];
+      const idVoices = all.filter((v) => /^id([-_]|$)/i.test(v.lang) || /indonesia/i.test(v.name));
+      return idVoices.sort((a, b) => {
+        const score = (v) =>
+          (/natural/i.test(v.name) ? 40 : 0) +
+          (/online/i.test(v.name) ? 30 : 0) +
+          (/google/i.test(v.name) ? 20 : 0) +
+          (/gadis|ardi/i.test(v.name) ? 10 : 0);
+        return score(b) - score(a);
+      });
+    }
+
+    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+      window.speechSynthesis.onvoiceschanged = () => getIndonesianVoices();
+    }
+
+    let selectedVoiceName = "";
+
     function speakIndonesian(text) {
       try {
         if (!("speechSynthesis" in window)) return;
         window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(text);
-        utt.lang = "id-ID";
-        utt.rate = 1.02;
-        window.speechSynthesis.speak(utt);
+        const voices = getIndonesianVoices();
+        const chosen =
+          (selectedVoiceName && voices.find((v) => v.name === selectedVoiceName)) || voices[0] || null;
+
+        // Pecah per kalimat agar intonasi dan jeda terdengar alami seperti manusia
+        const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+        sentences.forEach((sentence) => {
+          const clean = sentence.trim();
+          if (!clean) return;
+          const utt = new SpeechSynthesisUtterance(clean);
+          utt.lang = "id-ID";
+          if (chosen) utt.voice = chosen;
+          utt.rate = 0.98;
+          utt.pitch = 1.02;
+          window.speechSynthesis.speak(utt);
+        });
       } catch {
         // ignore speech errors
       }
@@ -389,11 +421,26 @@
                 <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${gradeId}</div>
               </div>
             </div>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center;">
               <button class="btn ${ws.callStarted ? "btn-danger" : "btn-emerald"} btn-sm" id="btnToggleCall">
                 ${ws.callStarted ? "Akhiri Panggilan" : "Mulai Panggilan Virtual"}
               </button>
-              <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara (Opsional)</button>
+              <button class="btn btn-outline btn-sm" id="btnReplayVoice">🔊 Dengar Suara Rekan</button>
+              <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara</button>
+            </div>
+            <div style="margin-top:10px;text-align:center;">
+              <select id="voiceSelect" class="select-input" style="min-width:220px;padding:5px 10px;font-size:11.5px;background:rgba(255,255,255,0.1);color:#e2e8f0;border-color:rgba(255,255,255,0.2);">
+                ${
+                  getIndonesianVoices().length > 0
+                    ? getIndonesianVoices()
+                        .map(
+                          (v) =>
+                            `<option value="${v.name}" style="color:#0f172a;" ${(selectedVoiceName ? v.name === selectedVoiceName : false) ? "selected" : ""}>Suara: ${v.name}</option>`
+                        )
+                        .join("")
+                    : `<option value="" style="color:#0f172a;">Suara Default Sistem (Buka di Edge/Chrome untuk suara Natural)</option>`
+                }
+              </select>
             </div>
           </div>
           <div class="memo-box" style="margin-bottom:12px;">
@@ -528,6 +575,18 @@
             }
           }
           draw();
+        });
+      }
+
+      const btnReplay = document.getElementById("btnReplayVoice");
+      if (btnReplay) {
+        btnReplay.addEventListener("click", () => speakIndonesian(item.call.prompt));
+      }
+
+      const voiceSel = document.getElementById("voiceSelect");
+      if (voiceSel) {
+        voiceSel.addEventListener("change", (e) => {
+          selectedVoiceName = e.target.value;
         });
       }
 
