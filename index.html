@@ -18,6 +18,7 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <span id="supaStatusBadge" class="pill" style="background:rgba(255,255,255,0.14);color:#e2e8f0;align-self:center;">Supabase: Memeriksa...</span>
         <button class="btn btn-ghost btn-sm" id="btnHistory">Riwayat Skor</button>
         <button class="btn btn-outline btn-sm" id="btnResetHome">Beranda</button>
       </div>
@@ -29,7 +30,9 @@
     </main>
   </div>
 
-  <!-- Data & App Scripts -->
+  <!-- Supabase SDK & Data/App Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
   <script src="data/questions-bod3.js"></script>
   <script src="data/questions-bod4.js"></script>
   <script src="data/questions-bod5.js"></script>

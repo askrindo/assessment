@@ -14,12 +14,36 @@
     view: "home",
     selectedGrade: "BOD-4",
     unitFilter: "Semua",
+    participantName: localStorage.getItem("askrindo_name") || "",
+    participantNip: localStorage.getItem("askrindo_nip") || "",
+    supaConnected: false,
+    supaMessage: "",
     fullFlow: false,
     flowQueue: [],
     flowResults: {},
     timerInterval: null,
     secondsLeft: 0
   };
+
+  async function initSupabaseStatus() {
+    const badge = document.getElementById("supaStatusBadge");
+    if (!window.SupabaseService) return;
+    const res = await window.SupabaseService.checkConnection();
+    state.supaConnected = res.ok;
+    state.supaMessage = res.reason || "";
+    if (badge) {
+      if (res.ok) {
+        badge.textContent = "Supabase: Terhubung";
+        badge.style.background = "#059669";
+        badge.style.color = "#fff";
+      } else {
+        badge.textContent = "Supabase: Lokal";
+        badge.title = res.reason || "Tabel assessment_results belum dibuat";
+        badge.style.background = "#d97706";
+        badge.style.color = "#fff";
+      }
+    }
+  }
 
   function clearTimer() {
     if (state.timerInterval) {
@@ -85,6 +109,8 @@
             <option value="Underwriting & Klaim" ${state.unitFilter === "Underwriting & Klaim" ? "selected" : ""}>Underwriting / Penjaminan / Klaim &amp; Subrogasi</option>
             <option value="Bisnis & Pemasaran" ${state.unitFilter === "Bisnis & Pemasaran" ? "selected" : ""}>Bisnis / Pemasaran (KUR, Suretyship, Umum)</option>
           </select>
+          <input type="text" id="inputName" class="select-input" style="min-width:180px;" placeholder="Nama Peserta (Opsional)" value="${state.participantName}" />
+          <input type="text" id="inputNip" class="select-input" style="min-width:140px;" placeholder="NIP / NPP (Opsional)" value="${state.participantNip}" />
         </div>
       </div>
 
@@ -97,6 +123,14 @@
 
     document.getElementById("unitSelect").addEventListener("change", (e) => {
       state.unitFilter = e.target.value;
+    });
+    document.getElementById("inputName").addEventListener("input", (e) => {
+      state.participantName = e.target.value;
+      localStorage.setItem("askrindo_name", e.target.value);
+    });
+    document.getElementById("inputNip").addEventListener("input", (e) => {
+      state.participantNip = e.target.value;
+      localStorage.setItem("askrindo_nip", e.target.value);
     });
 
     document.querySelectorAll("[data-start-full]").forEach((btn) => {
@@ -969,14 +1003,27 @@
         : { text: "Need Strengthening", cls: "pill-red" };
 
     if (scores.length > 0) {
-      saveHistory({
+      const entry = {
         date: new Date().toLocaleString("id-ID"),
+        participantName: state.participantName || "Anonim",
+        participantNip: state.participantNip || "-",
         grade: state.selectedGrade,
         unit: state.unitFilter,
         score: totalAvg,
         status: status.text,
         details: scores
-      });
+      };
+      saveHistory(entry);
+      if (window.SupabaseService) {
+        window.SupabaseService.saveResult(entry).then((r) => {
+          const el = document.getElementById("supaSaveInfo");
+          if (el) {
+            el.innerHTML = r.ok
+              ? `<span class="pill pill-green">✓ Tersimpan ke Supabase</span>`
+              : `<span class="pill pill-amber">Tersimpan Lokal (${r.reason || "Tabel Supabase belum siap"})</span>`;
+          }
+        });
+      }
     }
 
     root.innerHTML = `
@@ -990,6 +1037,7 @@
           <div style="text-align:right;">
             <div class="score-big">${totalAvg}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
             <span class="pill ${status.cls}">${status.text}</span>
+            <div id="supaSaveInfo" style="margin-top:6px;"></div>
           </div>
         </div>
 
@@ -1098,17 +1146,35 @@
   }
 
   // ======================== HISTORY VIEW ========================
-  function renderHistory() {
+  async function renderHistory() {
     clearTimer();
-    const list = getHistory();
+    let list = getHistory();
+    let sourceLabel = "Penyimpanan Lokal Browser";
+
+    if (window.SupabaseService) {
+      const res = await window.SupabaseService.fetchResults(30);
+      if (res.ok && res.data) {
+        sourceLabel = "Database Supabase (assessment_results)";
+        list = res.data.map((row) => ({
+          date: new Date(row.created_at).toLocaleString("id-ID"),
+          participantName: row.participant_name,
+          participantNip: row.participant_nip,
+          grade: row.grade,
+          unit: row.unit,
+          score: row.score,
+          status: row.status
+        }));
+      }
+    }
+
     root.innerHTML = `
       <div class="card">
         <div class="assess-header">
           <div>
             <h2 style="font-size:20px;color:var(--primary);">Riwayat Skor Simulasi</h2>
-            <div style="font-size:13px;color:var(--text-muted);">Tersimpan otomatis di browser Anda.</div>
+            <div style="font-size:13px;color:var(--text-muted);">Sumber: <strong>${sourceLabel}</strong></div>
           </div>
-          <button class="btn btn-outline-dark btn-sm" id="btnClearHist">Hapus Riwayat</button>
+          <button class="btn btn-outline-dark btn-sm" id="btnClearHist">Hapus Riwayat Lokal</button>
         </div>
         ${
           list.length === 0
@@ -1116,7 +1182,7 @@
             : `
           <table class="data-table">
             <thead>
-              <tr><th>Waktu</th><th>Grade</th><th>Unit Fokus</th><th>Skor</th><th>Status</th></tr>
+              <tr><th>Waktu</th><th>Peserta</th><th>Grade</th><th>Unit Fokus</th><th>Skor</th><th>Status</th></tr>
             </thead>
             <tbody>
               ${list
@@ -1124,6 +1190,7 @@
                   (it) => `
                 <tr>
                   <td>${it.date}</td>
+                  <td>${it.participantName || "Anonim"} (${it.participantNip || "-"})</td>
                   <td><strong>${it.grade}</strong></td>
                   <td>${it.unit}</td>
                   <td><strong>${it.score}/100</strong></td>
@@ -1152,5 +1219,6 @@
   btnResetHome.addEventListener("click", renderHome);
   btnHistory.addEventListener("click", renderHistory);
 
+  initSupabaseStatus();
   renderHome();
 })();
