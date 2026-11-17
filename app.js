@@ -393,6 +393,25 @@
     else if (methodId === "psychometric") renderPsychometric(gradeId);
   }
 
+  function shuffleArray(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function shuffleQuizOptions(q) {
+    const indexed = q.options.map((text, idx) => ({ text, isCorrect: idx === q.answer }));
+    const mixed = shuffleArray(indexed);
+    return {
+      ...q,
+      options: mixed.map((x) => x.text),
+      answer: mixed.findIndex((x) => x.isCorrect)
+    };
+  }
+
   // ======================== POTRAI 5-MODUL WORKSPACE (BOD-3 & BOD-4) ========================
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
@@ -401,6 +420,8 @@
       const filtered = pool.filter((s) => s.unit.includes(state.unitFilter.split(" ")[0]));
       if (filtered.length > 0) pool = filtered;
     }
+    pool = shuffleArray(pool).slice(0, 2);
+    pool = shuffleArray(pool).slice(0, 2);
 
     let idx = 0;
     let activeTab = "email"; // email | chat | call | documents | ai | eval
@@ -669,6 +690,7 @@
       const filtered = pool.filter((s) => s.unit.includes(state.unitFilter.split(" ")[0]));
       if (filtered.length > 0) pool = filtered;
     }
+    pool = shuffleArray(pool).slice(0, 2);
     let idx = 0;
     let stage = "written"; // written | present | eval
     let writtenAnswers = [];
@@ -848,7 +870,7 @@
   function renderCapStar(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
-    const items = data.cap;
+    const items = shuffleArray(data.cap).slice(0, 2);
     let idx = 0;
     let star = { s: "", t: "", a: "", r: "" };
     let evaluated = false;
@@ -982,7 +1004,7 @@
   function renderOceanPersonality(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
-    const items = data.personality;
+    const items = shuffleArray(data.personality);
     const answers = {};
     const labels = ["Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
 
@@ -1063,7 +1085,7 @@
   // ======================== PSYCHOMETRIC TEST (BOD-5) ========================
   function renderPsychometric(gradeId) {
     const data = GRADES[gradeId];
-    const items = data.psychometric;
+    const items = shuffleArray(data.psychometric).slice(0, 6).map(shuffleQuizOptions);
     let idx = 0;
     let selected = null;
     let checked = false;
