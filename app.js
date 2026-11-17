@@ -3,6 +3,9 @@
   const btnHome = document.getElementById("btnHome");
   const btnResetHome = document.getElementById("btnResetHome");
   const btnHistory = document.getElementById("btnHistory");
+  const btnAdmin = document.getElementById("btnAdmin");
+  const btnLogout = document.getElementById("btnLogout");
+  const userSessionBadge = document.getElementById("userSessionBadge");
 
   const GRADES = {
     "BOD-3": window.DATA_BOD3,
@@ -10,12 +13,21 @@
     "BOD-5": window.DATA_BOD5
   };
 
+  function loadSession() {
+    try {
+      return JSON.parse(localStorage.getItem("askrindo_session_v1") || "null");
+    } catch {
+      return null;
+    }
+  }
+
   let state = {
     view: "home",
+    currentUser: loadSession(),
     selectedGrade: "BOD-4",
     unitFilter: "Semua",
-    participantName: localStorage.getItem("askrindo_name") || "",
-    participantNip: localStorage.getItem("askrindo_nip") || "",
+    participantName: "",
+    participantNip: "",
     supaConnected: false,
     supaMessage: "",
     fullFlow: false,
@@ -24,6 +36,31 @@
     timerInterval: null,
     secondsLeft: 0
   };
+
+  if (state.currentUser) {
+    state.selectedGrade = state.currentUser.grade || "BOD-4";
+    state.unitFilter = state.currentUser.unit || "Semua";
+    state.participantName = state.currentUser.full_name || "";
+    state.participantNip = state.currentUser.nip || "";
+  }
+
+  function updateTopbarSession() {
+    const u = state.currentUser;
+    if (u) {
+      userSessionBadge.style.display = "inline-block";
+      userSessionBadge.textContent = `${u.full_name} (${u.role.toUpperCase()} • ${u.grade})`;
+      btnHistory.style.display = "inline-flex";
+      btnResetHome.style.display = "inline-flex";
+      btnLogout.style.display = "inline-flex";
+      btnAdmin.style.display = u.role === "admin" ? "inline-flex" : "none";
+    } else {
+      userSessionBadge.style.display = "none";
+      btnHistory.style.display = "none";
+      btnResetHome.style.display = "none";
+      btnLogout.style.display = "none";
+      btnAdmin.style.display = "none";
+    }
+  }
 
   async function initSupabaseStatus() {
     const badge = document.getElementById("supaStatusBadge");
@@ -86,9 +123,174 @@
     return JSON.parse(localStorage.getItem("askrindo_sim_history_v2") || "[]");
   }
 
+  // ======================== LOGIN & REGISTER ========================
+  function renderLogin() {
+    clearTimer();
+    updateTopbarSession();
+    let mode = "login"; // login | register
+    let msg = "";
+
+    function draw() {
+      root.innerHTML = `
+        <div class="card" style="max-width:480px;margin:30px auto;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <span class="grade-badge">Asuransi Kredit Indonesia</span>
+            <h2 style="font-size:22px;color:var(--primary);margin-bottom:4px;">${mode === "login" ? "Masuk ke Portal Asesmen" : "Daftar Akun Pegawai Baru"}</h2>
+            <p style="font-size:13px;color:var(--text-muted);">Gunakan NIP / Username Anda untuk memulai simulasi atau mengelola data pegawai.</p>
+          </div>
+
+          ${msg ? `<div class="feedback-box warn" style="margin-bottom:14px;margin-top:0;">${msg}</div>` : ""}
+
+          ${
+            mode === "login"
+              ? `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">NIP / Username</label>
+                <input type="text" id="loginNip" class="select-input" style="width:100%;" placeholder="Contoh: 1922 atau admin" />
+              </div>
+              <div>
+                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
+                <input type="password" id="loginPw" class="select-input" style="width:100%;" placeholder="Masukkan password" />
+              </div>
+              <button class="btn btn-primary" id="btnDoLogin" style="margin-top:6px;">Masuk</button>
+              <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:6px;">
+                Belum punya akun pegawai? <a href="#" id="linkToReg" style="color:var(--primary);font-weight:700;">Daftar di sini</a>
+              </div>
+              <div class="memo-box" style="margin-top:10px;margin-bottom:0;font-size:12px;">
+                <strong>Akun Admin Default:</strong> Username <code>admin</code> / Password <code>admin123</code> (setelah menjalankan <code>supabase-schema.sql</code>).
+              </div>
+            </div>
+          `
+              : `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">NIP / NPP Pegawai</label>
+                <input type="text" id="regNip" class="select-input" style="width:100%;" placeholder="Contoh: 19900123" />
+              </div>
+              <div>
+                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Nama Lengkap</label>
+                <input type="text" id="regName" class="select-input" style="width:100%;" placeholder="Nama lengkap pegawai" />
+              </div>
+              <div class="grid-2" style="gap:10px;">
+                <div>
+                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Level / Grade</label>
+                  <select id="regGrade" class="select-input" style="width:100%;min-width:0;">
+                    <option value="BOD-3">BOD-3 (Grade 15–16)</option>
+                    <option value="BOD-4" selected>BOD-4 (Grade 12–14)</option>
+                    <option value="BOD-5">BOD-5 (Grade 8–11)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Unit / Bidang</label>
+                  <select id="regUnit" class="select-input" style="width:100%;min-width:0;">
+                    <option value="Underwriting & Klaim">Underwriting &amp; Klaim</option>
+                    <option value="Bisnis & Pemasaran">Bisnis &amp; Pemasaran</option>
+                    <option value="Semua">Semua Bidang</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
+                <input type="password" id="regPw" class="select-input" style="width:100%;" placeholder="Minimal 6 karakter" />
+              </div>
+              <button class="btn btn-emerald" id="btnDoReg" style="margin-top:6px;">Daftar Akun Pegawai</button>
+              <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:6px;">
+                Sudah punya akun? <a href="#" id="linkToLogin" style="color:var(--primary);font-weight:700;">Masuk di sini</a>
+              </div>
+            </div>
+          `
+          }
+        </div>
+      `;
+
+      if (mode === "login") {
+        const submitLogin = async () => {
+          const nip = document.getElementById("loginNip").value.trim();
+          const pw = document.getElementById("loginPw").value;
+          if (!nip || !pw) {
+            msg = "NIP/Username dan Password wajib diisi.";
+            draw();
+            return;
+          }
+          const btn = document.getElementById("btnDoLogin");
+          btn.disabled = true;
+          btn.textContent = "Memeriksa...";
+          const res = await window.SupabaseService.login(nip, pw);
+          if (!res.ok) {
+            msg = res.reason;
+            draw();
+            return;
+          }
+          state.currentUser = res.user;
+          state.selectedGrade = res.user.grade || "BOD-4";
+          state.unitFilter = res.user.unit || "Semua";
+          state.participantName = res.user.full_name;
+          state.participantNip = res.user.nip;
+          localStorage.setItem("askrindo_session_v1", JSON.stringify(res.user));
+          updateTopbarSession();
+          renderHome();
+        };
+        document.getElementById("btnDoLogin").addEventListener("click", submitLogin);
+        document.getElementById("loginPw").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") submitLogin();
+        });
+        document.getElementById("linkToReg").addEventListener("click", (e) => {
+          e.preventDefault();
+          mode = "register";
+          msg = "";
+          draw();
+        });
+      } else {
+        document.getElementById("btnDoReg").addEventListener("click", async () => {
+          const nip = document.getElementById("regNip").value.trim();
+          const full_name = document.getElementById("regName").value.trim();
+          const grade = document.getElementById("regGrade").value;
+          const unit = document.getElementById("regUnit").value;
+          const password = document.getElementById("regPw").value;
+          if (!nip || !full_name || password.length < 6) {
+            msg = "Mohon lengkapi NIP, Nama Lengkap, dan Password minimal 6 karakter.";
+            draw();
+            return;
+          }
+          const btn = document.getElementById("btnDoReg");
+          btn.disabled = true;
+          btn.textContent = "Mendaftar...";
+          const res = await window.SupabaseService.createUser({ nip, full_name, password, role: "pegawai", grade, unit });
+          if (!res.ok) {
+            msg = res.reason;
+            draw();
+            return;
+          }
+          state.currentUser = res.user;
+          state.selectedGrade = res.user.grade;
+          state.unitFilter = res.user.unit;
+          state.participantName = res.user.full_name;
+          state.participantNip = res.user.nip;
+          localStorage.setItem("askrindo_session_v1", JSON.stringify(res.user));
+          updateTopbarSession();
+          renderHome();
+        });
+        document.getElementById("linkToLogin").addEventListener("click", (e) => {
+          e.preventDefault();
+          mode = "login";
+          msg = "";
+          draw();
+        });
+      }
+    }
+
+    draw();
+  }
+
   // ======================== HOME VIEW ========================
   function renderHome() {
+    if (!state.currentUser) {
+      renderLogin();
+      return;
+    }
     clearTimer();
+    updateTopbarSession();
     state.view = "home";
     state.fullFlow = false;
     state.flowQueue = [];
@@ -96,11 +298,10 @@
 
     root.innerHTML = `
       <div class="card hero-card">
-        <h1>Simulasi Asesmen Terpadu — Asuransi Kredit Indonesia</h1>
+        <h1>Selamat Datang, ${state.currentUser.full_name}</h1>
         <p>
-          Disesuaikan dengan format resmi <strong>PotrAI (Email, Chat, Call, Documents, AI Assistant)</strong>,
-          <strong>Case Study + Asynchronous Presentation</strong>, <strong>Career Achievement Portfolio (CAP / STAR)</strong>,
-          <strong>Personality Test (5 Dimensi OCEAN)</strong>, dan <strong>Psychometric Test</strong> untuk portofolio <strong>KUR &amp; Non-KUR (Suretyship &amp; Asuransi Umum)</strong>.
+          NIP/NPP: <strong>${state.currentUser.nip}</strong> • Grade Terdaftar: <strong>${state.currentUser.grade}</strong> •
+          Unit: <strong>${state.currentUser.unit}</strong>. Pilih level di bawah untuk memulai simulasi asesmen lengkap atau latihan per metode.
         </p>
         <div class="filter-bar">
           <label for="unitSelect">Fokus Unit / Bidang:</label>
@@ -109,8 +310,6 @@
             <option value="Underwriting & Klaim" ${state.unitFilter === "Underwriting & Klaim" ? "selected" : ""}>Underwriting / Penjaminan / Klaim &amp; Subrogasi</option>
             <option value="Bisnis & Pemasaran" ${state.unitFilter === "Bisnis & Pemasaran" ? "selected" : ""}>Bisnis / Pemasaran (KUR, Suretyship, Umum)</option>
           </select>
-          <input type="text" id="inputName" class="select-input" style="min-width:180px;" placeholder="Nama Peserta (Opsional)" value="${state.participantName}" />
-          <input type="text" id="inputNip" class="select-input" style="min-width:140px;" placeholder="NIP / NPP (Opsional)" value="${state.participantNip}" />
         </div>
       </div>
 
@@ -123,14 +322,6 @@
 
     document.getElementById("unitSelect").addEventListener("change", (e) => {
       state.unitFilter = e.target.value;
-    });
-    document.getElementById("inputName").addEventListener("input", (e) => {
-      state.participantName = e.target.value;
-      localStorage.setItem("askrindo_name", e.target.value);
-    });
-    document.getElementById("inputNip").addEventListener("input", (e) => {
-      state.participantNip = e.target.value;
-      localStorage.setItem("askrindo_nip", e.target.value);
     });
 
     document.querySelectorAll("[data-start-full]").forEach((btn) => {
@@ -1147,14 +1338,16 @@
 
   // ======================== HISTORY VIEW ========================
   async function renderHistory() {
+    if (!state.currentUser) return renderLogin();
     clearTimer();
     let list = getHistory();
     let sourceLabel = "Penyimpanan Lokal Browser";
 
     if (window.SupabaseService) {
-      const res = await window.SupabaseService.fetchResults(30);
+      const nipFilter = state.currentUser.role === "admin" ? null : state.currentUser.nip;
+      const res = await window.SupabaseService.fetchResults(50, nipFilter);
       if (res.ok && res.data) {
-        sourceLabel = "Database Supabase (assessment_results)";
+        sourceLabel = state.currentUser.role === "admin" ? "Database Supabase (Semua Pegawai)" : `Database Supabase (NIP: ${state.currentUser.nip})`;
         list = res.data.map((row) => ({
           date: new Date(row.created_at).toLocaleString("id-ID"),
           participantName: row.participant_name,
@@ -1215,10 +1408,316 @@
     });
   }
 
+  // ======================== ADMIN PANEL (KELOLA PEGAWAI) ========================
+  async function renderAdminPanel() {
+    if (!state.currentUser || state.currentUser.role !== "admin") return renderHome();
+    clearTimer();
+    let adminTab = "users"; // users | results
+    let users = [];
+    let results = [];
+    let searchQ = "";
+    let gradeFilter = "Semua";
+    let statusMsg = "";
+    let editingId = null;
+
+    async function loadData() {
+      const uRes = await window.SupabaseService.fetchAllUsers();
+      if (uRes.ok) users = uRes.data;
+      const rRes = await window.SupabaseService.fetchResults(200, null);
+      if (rRes.ok) results = rRes.data;
+      draw();
+    }
+
+    function draw() {
+      const filteredUsers = users.filter((u) => {
+        const q = searchQ.toLowerCase();
+        const matchQ = !q || u.nip.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q) || u.unit.toLowerCase().includes(q);
+        const matchG = gradeFilter === "Semua" || u.grade === gradeFilter;
+        return matchQ && matchG;
+      });
+
+      const filteredResults = results.filter((r) => gradeFilter === "Semua" || r.grade === gradeFilter);
+
+      root.innerHTML = `
+        <div class="card">
+          <div class="assess-header">
+            <div>
+              <span class="grade-badge amber">Panel Administrator SDM</span>
+              <h2 style="font-size:22px;color:var(--primary);">Kelola Data User Pegawai &amp; Rekap Asesmen</h2>
+            </div>
+            <button class="btn btn-outline-dark btn-sm" id="btnAdminBack">Kembali ke Beranda</button>
+          </div>
+
+          <div class="potrai-tabs">
+            <button class="potrai-tab ${adminTab === "users" ? "active" : ""}" data-atab="users">Data User Pegawai (${users.length})</button>
+            <button class="potrai-tab ${adminTab === "results" ? "active" : ""}" data-atab="results">Rekap Hasil Asesmen (${results.length})</button>
+          </div>
+
+          ${statusMsg ? `<div class="feedback-box info" style="margin-top:0;margin-bottom:14px;">${statusMsg}</div>` : ""}
+
+          ${
+            adminTab === "users"
+              ? `
+            <div class="memo-box" style="border-left-color:var(--emerald);background:#f0fdf4;">
+              <h4>Tambah Akun Pegawai / Admin Baru</h4>
+              <div class="grid-3" style="gap:10px;margin-top:10px;">
+                <input type="text" id="newNip" class="select-input" style="min-width:0;" placeholder="NIP / Username *" />
+                <input type="text" id="newName" class="select-input" style="min-width:0;" placeholder="Nama Lengkap *" />
+                <input type="password" id="newPw" class="select-input" style="min-width:0;" placeholder="Password awal *" />
+                <select id="newGrade" class="select-input" style="min-width:0;">
+                  <option value="BOD-3">BOD-3 (Grade 15–16)</option>
+                  <option value="BOD-4" selected>BOD-4 (Grade 12–14)</option>
+                  <option value="BOD-5">BOD-5 (Grade 8–11)</option>
+                </select>
+                <select id="newUnit" class="select-input" style="min-width:0;">
+                  <option value="Underwriting & Klaim">Underwriting &amp; Klaim</option>
+                  <option value="Bisnis & Pemasaran">Bisnis &amp; Pemasaran</option>
+                  <option value="Manajemen Risiko">Manajemen Risiko</option>
+                  <option value="Semua">Semua Bidang</option>
+                </select>
+                <select id="newRole" class="select-input" style="min-width:0;">
+                  <option value="pegawai" selected>Role: Pegawai</option>
+                  <option value="admin">Role: Admin</option>
+                </select>
+              </div>
+              <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+                <button class="btn btn-emerald btn-sm" id="btnAddUser">+ Tambah User</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+              <input type="text" id="adminSearch" class="select-input" style="flex:1;" placeholder="Cari NIP, nama, atau unit..." value="${searchQ}" />
+              <select id="adminGradeFilter" class="select-input" style="min-width:160px;">
+                <option value="Semua" ${gradeFilter === "Semua" ? "selected" : ""}>Semua Grade</option>
+                <option value="BOD-3" ${gradeFilter === "BOD-3" ? "selected" : ""}>BOD-3</option>
+                <option value="BOD-4" ${gradeFilter === "BOD-4" ? "selected" : ""}>BOD-4</option>
+                <option value="BOD-5" ${gradeFilter === "BOD-5" ? "selected" : ""}>BOD-5</option>
+              </select>
+            </div>
+
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr><th>NIP</th><th>Nama Lengkap</th><th>Grade</th><th>Unit</th><th>Role</th><th>Status</th><th>Aksi</th></tr>
+                </thead>
+                <tbody>
+                  ${filteredUsers
+                    .map((u) =>
+                      editingId === u.id
+                        ? `
+                    <tr>
+                      <td><strong>${u.nip}</strong></td>
+                      <td><input type="text" id="editName" class="select-input" style="min-width:140px;padding:4px 8px;" value="${u.full_name}" /></td>
+                      <td>
+                        <select id="editGrade" class="select-input" style="min-width:95px;padding:4px 6px;">
+                          <option value="BOD-3" ${u.grade === "BOD-3" ? "selected" : ""}>BOD-3</option>
+                          <option value="BOD-4" ${u.grade === "BOD-4" ? "selected" : ""}>BOD-4</option>
+                          <option value="BOD-5" ${u.grade === "BOD-5" ? "selected" : ""}>BOD-5</option>
+                        </select>
+                      </td>
+                      <td><input type="text" id="editUnit" class="select-input" style="min-width:130px;padding:4px 8px;" value="${u.unit}" /></td>
+                      <td>
+                        <select id="editRole" class="select-input" style="min-width:95px;padding:4px 6px;">
+                          <option value="pegawai" ${u.role === "pegawai" ? "selected" : ""}>pegawai</option>
+                          <option value="admin" ${u.role === "admin" ? "selected" : ""}>admin</option>
+                        </select>
+                      </td>
+                      <td>
+                        <select id="editActive" class="select-input" style="min-width:85px;padding:4px 6px;">
+                          <option value="true" ${u.is_active ? "selected" : ""}>Aktif</option>
+                          <option value="false" ${!u.is_active ? "selected" : ""}>Nonaktif</option>
+                        </select>
+                      </td>
+                      <td style="white-space:nowrap;">
+                        <button class="btn btn-emerald btn-sm" data-save-user="${u.id}">Simpan</button>
+                        <button class="btn btn-outline-dark btn-sm" id="btnCancelEdit">Batal</button>
+                      </td>
+                    </tr>
+                  `
+                        : `
+                    <tr>
+                      <td><strong>${u.nip}</strong></td>
+                      <td>${u.full_name}</td>
+                      <td>${u.grade}</td>
+                      <td>${u.unit}</td>
+                      <td><span class="pill ${u.role === "admin" ? "pill-amber" : "pill-green"}">${u.role}</span></td>
+                      <td>${u.is_active ? "Aktif" : "<span style='color:var(--rose);font-weight:700;'>Nonaktif</span>"}</td>
+                      <td style="white-space:nowrap;">
+                        <button class="btn btn-outline-dark btn-sm" data-edit-user="${u.id}">Edit</button>
+                        <button class="btn btn-outline-dark btn-sm" data-reset-pw="${u.id}" data-nip="${u.nip}">Reset PW</button>
+                        ${u.nip !== state.currentUser.nip ? `<button class="btn btn-danger btn-sm" data-del-user="${u.id}" data-nip="${u.nip}">Hapus</button>` : ""}
+                      </td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `
+              : `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+              <select id="adminGradeFilter" class="select-input" style="min-width:160px;">
+                <option value="Semua" ${gradeFilter === "Semua" ? "selected" : ""}>Semua Grade</option>
+                <option value="BOD-3" ${gradeFilter === "BOD-3" ? "selected" : ""}>BOD-3</option>
+                <option value="BOD-4" ${gradeFilter === "BOD-4" ? "selected" : ""}>BOD-4</option>
+                <option value="BOD-5" ${gradeFilter === "BOD-5" ? "selected" : ""}>BOD-5</option>
+              </select>
+              <button class="btn btn-primary btn-sm" id="btnExportCsv">Export CSV Rekap</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Waktu</th><th>NIP</th><th>Nama</th><th>Grade</th><th>Unit</th><th>Skor</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  ${filteredResults
+                    .map(
+                      (r) => `
+                    <tr>
+                      <td>${new Date(r.created_at).toLocaleString("id-ID")}</td>
+                      <td>${r.participant_nip}</td>
+                      <td>${r.participant_name}</td>
+                      <td><strong>${r.grade}</strong></td>
+                      <td>${r.unit}</td>
+                      <td><strong>${r.score}/100</strong></td>
+                      <td>${r.status}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `
+          }
+        </div>
+      `;
+
+      document.getElementById("btnAdminBack").addEventListener("click", renderHome);
+      document.querySelectorAll("[data-atab]").forEach((b) => {
+        b.addEventListener("click", () => {
+          adminTab = b.getAttribute("data-atab");
+          statusMsg = "";
+          draw();
+        });
+      });
+
+      const gf = document.getElementById("adminGradeFilter");
+      if (gf) {
+        gf.addEventListener("change", (e) => {
+          gradeFilter = e.target.value;
+          draw();
+        });
+      }
+
+      if (adminTab === "users") {
+        document.getElementById("adminSearch").addEventListener("input", (e) => {
+          searchQ = e.target.value;
+          draw();
+        });
+
+        document.getElementById("btnAddUser").addEventListener("click", async () => {
+          const nip = document.getElementById("newNip").value.trim();
+          const full_name = document.getElementById("newName").value.trim();
+          const password = document.getElementById("newPw").value;
+          const grade = document.getElementById("newGrade").value;
+          const unit = document.getElementById("newUnit").value;
+          const role = document.getElementById("newRole").value;
+          if (!nip || !full_name || password.length < 6) {
+            statusMsg = "NIP, Nama Lengkap, dan Password (min. 6 karakter) wajib diisi.";
+            draw();
+            return;
+          }
+          const res = await window.SupabaseService.createUser({ nip, full_name, password, role, grade, unit });
+          statusMsg = res.ok ? `✓ User ${nip} (${full_name}) berhasil ditambahkan.` : `✕ Gagal: ${res.reason}`;
+          await loadData();
+        });
+
+        document.querySelectorAll("[data-edit-user]").forEach((b) => {
+          b.addEventListener("click", () => {
+            editingId = b.getAttribute("data-edit-user");
+            draw();
+          });
+        });
+
+        const btnCancel = document.getElementById("btnCancelEdit");
+        if (btnCancel) {
+          btnCancel.addEventListener("click", () => {
+            editingId = null;
+            draw();
+          });
+        }
+
+        document.querySelectorAll("[data-save-user]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-save-user");
+            const res = await window.SupabaseService.updateUser(id, {
+              full_name: document.getElementById("editName").value.trim(),
+              grade: document.getElementById("editGrade").value,
+              unit: document.getElementById("editUnit").value.trim(),
+              role: document.getElementById("editRole").value,
+              is_active: document.getElementById("editActive").value === "true"
+            });
+            editingId = null;
+            statusMsg = res.ok ? "✓ Data pegawai berhasil diperbarui." : `✕ Gagal update: ${res.reason}`;
+            await loadData();
+          });
+        });
+
+        document.querySelectorAll("[data-reset-pw]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-reset-pw");
+            const nip = b.getAttribute("data-nip");
+            const newPw = prompt(`Masukkan password baru untuk ${nip} (min. 6 karakter):`);
+            if (!newPw || newPw.length < 6) return;
+            const res = await window.SupabaseService.updateUser(id, { password: newPw });
+            statusMsg = res.ok ? `✓ Password ${nip} berhasil direset.` : `✕ Gagal reset: ${res.reason}`;
+            draw();
+          });
+        });
+
+        document.querySelectorAll("[data-del-user]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-del-user");
+            const nip = b.getAttribute("data-nip");
+            if (!confirm(`Hapus permanen user ${nip}?`)) return;
+            const res = await window.SupabaseService.deleteUser(id);
+            statusMsg = res.ok ? `✓ User ${nip} berhasil dihapus.` : `✕ Gagal hapus: ${res.reason}`;
+            await loadData();
+          });
+        });
+      } else {
+        document.getElementById("btnExportCsv").addEventListener("click", () => {
+          const header = "Waktu,NIP,Nama,Grade,Unit,Skor,Status\n";
+          const rows = filteredResults
+            .map((r) => `"${new Date(r.created_at).toLocaleString("id-ID")}","${r.participant_nip}","${r.participant_name}","${r.grade}","${r.unit}",${r.score},"${r.status}"`)
+            .join("\n");
+          const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `rekap-asesmen-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+        });
+      }
+    }
+
+    await loadData();
+  }
+
   btnHome.addEventListener("click", renderHome);
   btnResetHome.addEventListener("click", renderHome);
   btnHistory.addEventListener("click", renderHistory);
+  btnAdmin.addEventListener("click", renderAdminPanel);
+  btnLogout.addEventListener("click", () => {
+    localStorage.removeItem("askrindo_session_v1");
+    state.currentUser = null;
+    renderLogin();
+  });
 
   initSupabaseStatus();
-  renderHome();
+  updateTopbarSession();
+  if (state.currentUser) renderHome();
+  else renderLogin();
 })();
