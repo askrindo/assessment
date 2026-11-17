@@ -640,10 +640,21 @@
           if (!txt) return;
           ws.chatMessages.push({ sender: "Anda", role: "user", text: txt });
           ws.chatTurn++;
-          const aiReply =
-            ws.chatTurn === 1
-              ? item.chat.followUp
-              : "Terima kasih atas penjelasannya. Posisi dan solusi Anda sudah saya catat untuk ditindaklanjuti.";
+          const lower = txt.toLowerCase();
+          let aiReply = "";
+          if (ws.chatTurn === 1) {
+            aiReply = item.chat.followUp;
+          } else if (ws.chatTurn === 2) {
+            if (/(tolak|tunda|pending|tidak bisa|audit|sop|wajib)/.test(lower)) {
+              aiReply = "Saya mengerti prinsip tata kelola yang Anda pegang. Namun apa komitmen waktu atau solusi alternatif konkret yang bisa Anda tawarkan agar hubungan kerja sama tetap berjalan?";
+            } else if (/(setuju|oke|lanjut|langsung|cairkan)/.test(lower) && !/(syarat|audit|escrow|jaminan|verifikasi)/.test(lower)) {
+              aiReply = "Baik, berarti Anda menyetujui tanpa syarat tambahan ya? Bagaimana Anda mempertanggungjawabkannya jika nanti ada temuan audit internal atau lonjakan klaim?";
+            } else {
+              aiReply = "Opsi bersyarat dan solusi kolaboratif yang Anda ajukan cukup masuk akal. Pastikan detail mekanisme dan PIC-nya Anda tuangkan juga di Email/Documents ya.";
+            }
+          } else {
+            aiReply = "Terima kasih. Seluruh poin negosiasi dan komitmen Anda sudah terekam dalam log diskusi untuk evaluasi.";
+          }
           ws.chatMessages.push({ sender: item.chat.partnerName, role: "ai", text: aiReply });
           draw();
         };
@@ -673,14 +684,24 @@
       if (!state.flowResults.potrai) state.flowResults.potrai = [];
       state.flowResults.potrai[idx] = score;
 
+      const trails = [
+        { name: "Operational Decision (Email)", ok: ws.emailReply.trim().length >= 25 },
+        { name: "Stakeholder Role-Play (Chat AI)", ok: ws.chatMessages.filter((m) => m.role === "user").length >= 2 },
+        { name: "People / Virtual Alignment (Call)", ok: ws.callResponse.trim().length >= 25 },
+        { name: "Business Analysis (Documents)", ok: ws.docAnalysis.trim().length >= 25 }
+      ];
+
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi PotrAI Simulation (${modulesCompleted}/4 Modul Kerja Diisi)</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Indikator kunci terpenuhi: ${matched.length} poin</div>
+              <strong>Evaluasi PortrAI Simulation — Behavioral Trails (${modulesCompleted}/4 Modul Kerja)</strong>
+              <div style="font-size:13px;color:var(--text-muted);">Indikator perilaku &amp; konsep kunci terpenuhi: ${matched.length} poin</div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
+          </div>
+          <div class="tag-row">
+            ${trails.map((t) => `<span class="tag" style="background:${t.ok ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${t.ok ? "#065f46" : "#991b1b"};">${t.ok ? "✓" : "✕"} ${t.name}</span>`).join("")}
           </div>
           <div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>
         </div>
