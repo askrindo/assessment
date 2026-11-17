@@ -106,12 +106,12 @@
     state.supaMessage = res.reason || "";
     if (badge) {
       if (res.ok) {
-        badge.textContent = "Supabase: Terhubung";
+        badge.textContent = "Server: Terhubung";
         badge.style.background = "#059669";
         badge.style.color = "#fff";
       } else {
-        badge.textContent = "Supabase: Lokal";
-        badge.title = res.reason || "Tabel assessment_results belum dibuat";
+        badge.textContent = "Mode: Lokal";
+        badge.title = res.reason || "Server database belum siap";
         badge.style.background = "#d97706";
         badge.style.color = "#fff";
       }
@@ -1250,8 +1250,8 @@
           const el = document.getElementById("supaSaveInfo");
           if (el) {
             el.innerHTML = r.ok
-              ? `<span class="pill pill-green">✓ Tersimpan ke Supabase</span>`
-              : `<span class="pill pill-amber">Tersimpan Lokal (${r.reason || "Tabel Supabase belum siap"})</span>`;
+              ? `<span class="pill pill-green">✓ Tersimpan di Server</span>`
+              : `<span class="pill pill-amber">Tersimpan Lokal (${r.reason || "Server belum siap"})</span>`;
           }
         });
       }
@@ -1387,7 +1387,7 @@
       const nipFilter = state.currentUser.role === "admin" ? null : state.currentUser.nip;
       const res = await window.SupabaseService.fetchResults(50, nipFilter);
       if (res.ok && res.data) {
-        sourceLabel = state.currentUser.role === "admin" ? "Database Supabase (Semua Pegawai)" : `Database Supabase (NIP: ${state.currentUser.nip})`;
+        sourceLabel = state.currentUser.role === "admin" ? "Database Pusat (Semua Pegawai)" : `Database Pusat (NIP: ${state.currentUser.nip})`;
         list = res.data.map((row) => ({
           date: new Date(row.created_at).toLocaleString("id-ID"),
           participantName: row.participant_name,
