@@ -127,6 +127,13 @@
     }
   }
 
+  function cleanupAllSessions() {
+    clearTimer();
+    if (typeof window.cleanupPortraiEngine === "function") {
+      window.cleanupPortraiEngine();
+    }
+  }
+
   function startTimer(seconds, elId, onExpire) {
     clearTimer();
     state.secondsLeft = seconds;
@@ -163,7 +170,7 @@
 
   // ======================== LOGIN & REGISTER ========================
   function renderLogin() {
-    clearTimer();
+    cleanupAllSessions();
     updateTopbarSession();
     let mode = "login"; // login | register
     let msg = "";
@@ -323,7 +330,7 @@
       renderLogin();
       return;
     }
-    clearTimer();
+    cleanupAllSessions();
     updateTopbarSession();
     state.view = "home";
     state.fullFlow = false;
@@ -885,6 +892,10 @@
           stage = "eval";
           draw();
         });
+        let speechRec = null;
+        let recTimerInt = null;
+        let recSec = 0;
+
         if (isRecording && recMode === "video" && activeStream) {
           const vidEl = document.getElementById("csLivePreview");
           if (vidEl) vidEl.srcObject = activeStream;
@@ -903,6 +914,11 @@
                 if (e.data && e.data.size > 0) chunks.push(e.data);
               };
               mediaRecorder.onstop = () => {
+                if (recTimerInt) clearInterval(recTimerInt);
+                if (speechRec) {
+                  try { speechRec.stop(); } catch {}
+                  speechRec = null;
+                }
                 const mime = mode === "video" ? "video/webm" : "audio/webm";
                 const blob = new Blob(chunks, { type: mime });
                 if (mode === "video") {
@@ -918,6 +934,30 @@
               };
               mediaRecorder.start();
               isRecording = true;
+
+              // Transkripsi otomatis ucapan saat presentasi (jika didukung browser)
+              const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+              if (SR) {
+                try {
+                  speechRec = new SR();
+                  speechRec.lang = "id-ID";
+                  speechRec.continuous = true;
+                  speechRec.interimResults = false;
+                  speechRec.onresult = (ev) => {
+                    const last = ev.results[ev.results.length - 1][0].transcript;
+                    scriptText = (scriptText ? scriptText + " " : "") + last;
+                    const box = document.getElementById("csScript");
+                    if (box) box.value = scriptText;
+                  };
+                  speechRec.start();
+                } catch {}
+              }
+
+              recSec = 0;
+              recTimerInt = setInterval(() => {
+                recSec++;
+              }, 1000);
+
               draw();
             } catch {
               alert(
@@ -1124,6 +1164,17 @@
         <div class="rubric-grid">
           ${item.indicators.map((ind) => `<div class="rubric-item"><label>Indikator Kompetensi</label><div style="font-size:13px;">${ind}</div></div>`).join("")}
         </div>
+        ${
+          !hasFirstPerson || !hasNumbers
+            ? `<div class="feedback-box warn" style="margin-top:14px;">
+                 <strong>Probing Asesor DDI (Catatan Penguatan STAR):</strong>
+                 <ul style="margin-left:18px;margin-top:6px;">
+                   ${!hasFirstPerson ? "<li>Pada bagian <strong>Action</strong>, perjelas kontribusi pribadi Anda menggunakan kata <em>'Saya'</em> (bukan hanya 'kami/tim').</li>" : ""}
+                   ${!hasNumbers ? "<li>Pada bagian <strong>Result</strong>, cantumkan angka dampak terukur (persentase perbaikan, rupiah, SLA hari, atau jumlah berkas).</li>" : ""}
+                 </ul>
+               </div>`
+            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Bukti Perilaku Lengkap:</strong> Jawaban STAR Anda sudah menunjukkan kepemilikan tindakan pribadi dan hasil terukur sesuai standar asesor DDI.</div>`
+        }
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextCap">
             ${idx + 1 < items.length ? "Pertanyaan CAP Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}

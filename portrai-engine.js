@@ -17,6 +17,20 @@
     let ringAudioCtx = null;
     let callTriggerTimeout = null;
     let callDurationInterval = null;
+    let callCamStream = null;
+
+    function startCallElapsedTimer() {
+      if (callDurationInterval) return;
+      callDurationInterval = setInterval(() => {
+        ws.callSeconds++;
+        const el = document.getElementById("callElapsedEl");
+        if (el) {
+          const mm = String(Math.floor(ws.callSeconds / 60)).padStart(2, "0");
+          const ss = String(ws.callSeconds % 60).padStart(2, "0");
+          el.textContent = `${mm}:${ss}`;
+        }
+      }, 1000);
+    }
 
     function playRingBeep() {
       try {
@@ -109,8 +123,19 @@
         clearInterval(callDurationInterval);
         callDurationInterval = null;
       }
+      if (callCamStream) {
+        callCamStream.getTracks().forEach((t) => t.stop());
+        callCamStream = null;
+      }
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch {}
+      }
+      const pop = document.getElementById("incomingCallPopup");
+      if (pop) pop.remove();
       stopRingtone();
     }
+
+    window.cleanupPortraiEngine = stopCallTimers;
 
     function randomCallDelay(minMs, maxMs) {
       return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
@@ -421,7 +446,11 @@
                 <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${ws.callStarted ? "Menunggu arahan Anda..." : "Klik Mulai Panggilan"}</div>
               </div>
               <div class="call-tile">
-                <div class="call-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">ANDA</div>
+                ${
+                  callCamStream
+                    ? `<video id="callSelfCam" autoplay muted playsinline style="width:100%;max-height:110px;border-radius:8px;object-fit:cover;background:#000;margin-bottom:6px;"></video>`
+                    : `<div class="call-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">ANDA</div>`
+                }
                 <div style="font-weight:700;font-size:14px;">${state.currentUser ? state.currentUser.full_name : "Peserta"}</div>
                 <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${gradeId}</div>
               </div>
@@ -430,6 +459,7 @@
               <button class="btn ${ws.callStarted ? "btn-danger" : "btn-emerald"} btn-sm" id="btnToggleCall">
                 ${ws.callStarted ? "Akhiri Panggilan" : "Mulai Panggilan Virtual"}
               </button>
+              <button class="btn btn-outline btn-sm" id="btnToggleCallCam">${callCamStream ? "Matikan Kamera" : "📹 Nyalakan Kamera"}</button>
               <button class="btn btn-outline btn-sm" id="btnReplayVoice">🔊 Dengar Suara Rekan</button>
               <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara</button>
             </div>
@@ -455,6 +485,9 @@
           ${ws.callAiProbe ? `<div class="feedback-box info" style="margin-bottom:12px;margin-top:0;"><strong>Tanggapan Lanjutan Rekan Call:</strong> ${ws.callAiProbe}</div>` : ""}
           <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Arahan / Respon Lisan Anda dalam Call:</label>
           <textarea class="textarea-box" id="callRespInput" placeholder="Sampaikan arahan, coaching, atau keputusan Anda secara langsung...">${ws.callResponse}</textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button class="btn btn-primary btn-sm" id="btnSendCallReply">Kirim Respon &amp; Dengar Tanggapan Rekan</button>
+          </div>
         `;
       }
 
@@ -572,14 +605,62 @@
           saveDrafts();
           if (!ws.callStarted) {
             ws.callStarted = true;
+            startCallElapsedTimer();
+            draw();
+            speakIndonesian(item.call.prompt);
           } else {
             ws.callStarted = false;
             ws.callEnded = true;
+            if (callDurationInterval) {
+              clearInterval(callDurationInterval);
+              callDurationInterval = null;
+            }
             if (ws.callResponse.trim().length >= 20 && !ws.callAiProbe) {
               ws.callAiProbe = "Baik, arahan Anda sudah jelas dan akan segera kami eksekusi sesuai koridor SOP dan target SLA.";
             }
+            draw();
           }
+        });
+      }
+
+      const selfCamEl = document.getElementById("callSelfCam");
+      if (selfCamEl && callCamStream) {
+        selfCamEl.srcObject = callCamStream;
+      }
+
+      const btnCam = document.getElementById("btnToggleCallCam");
+      if (btnCam) {
+        btnCam.addEventListener("click", async () => {
+          saveDrafts();
+          if (!callCamStream) {
+            try {
+              callCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              draw();
+            } catch {
+              alert("Kamera tidak tersedia atau izin ditolak.");
+            }
+          } else {
+            callCamStream.getTracks().forEach((t) => t.stop());
+            callCamStream = null;
+            draw();
+          }
+        });
+      }
+
+      const btnSendCallReply = document.getElementById("btnSendCallReply");
+      if (btnSendCallReply) {
+        btnSendCallReply.addEventListener("click", () => {
+          saveDrafts();
+          if (ws.callResponse.trim().length < 15) {
+            alert("Mohon sampaikan arahan atau respon Anda minimal 15 karakter.");
+            return;
+          }
+          const lower = ws.callResponse.toLowerCase();
+          ws.callAiProbe = /(prioritas|coaching|sop|sla|audit|mitigasi|target|pic)/.test(lower)
+            ? "Baik, arahan Anda sangat jelas. Saya akan langsung jalankan sesuai prioritas dan melaporkan progresnya sore ini."
+            : "Baik saya catat, namun mohon pastikan juga pembagian prioritas dan batas waktunya agar tim kami tidak ragu saat eksekusi.";
           draw();
+          speakIndonesian(ws.callAiProbe);
         });
       }
 
