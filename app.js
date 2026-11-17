@@ -446,6 +446,20 @@
   function renderPotrai(gradeId) {
     const data = GRADES[gradeId];
     let pool = shuffleArray(filterPoolByUnit(data.potrai, state.unitFilter)).slice(0, 2);
+    if (typeof window.renderPortraiVirtualOffice === "function") {
+      window.renderPortraiVirtualOffice({
+        root,
+        gradeId,
+        data,
+        pool,
+        state,
+        startTimer,
+        clearTimer,
+        nextInFlow,
+        renderReport
+      });
+      return;
+    }
 
     let idx = 0;
     let activeTab = "email"; // email | chat | call | documents | ai | eval
