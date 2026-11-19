@@ -234,13 +234,106 @@
 
     async fetchResults(limit = 50, nipFilter = null) {
       try {
-        let q = `assessment_results?select=*&order=created_at.desc&limit=${limit}`;
+        let q = `assessment_results?select=*&status=neq.PRE_ASSESSMENT_PROGRESS&order=created_at.desc&limit=${limit}`;
         if (nipFilter) q += `&participant_nip=eq.${encodeURIComponent(nipFilter)}`;
         const data = await rest(q);
         return { ok: true, data: data || [] };
       } catch (err) {
         return { ok: false, data: [], reason: err.message };
       }
+    },
+
+    async savePreProgress({ nip, fullName, grade, unit, payload }) {
+      const storageKey = `simeta_pre_progress_v1_${nip}_${grade}`;
+      const record = {
+        ...payload,
+        updatedAt: Date.now()
+      };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(record));
+      } catch {}
+
+      try {
+        const scoreVal =
+          (record.flowResults && record.flowResults.personality && record.flowResults.personality.overall) ||
+          (record.flowResults && typeof record.flowResults.psychometric === "number" ? record.flowResults.psychometric : 0) ||
+          (record.flowResults && typeof record.flowResults.cap === "number" ? record.flowResults.cap : 0) ||
+          0;
+        await rest("assessment_results", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify([
+            {
+              participant_name: fullName || "Peserta",
+              participant_nip: nip || "-",
+              grade: grade || "BOD-4",
+              unit: unit || "Umum",
+              score: Math.round(scoreVal),
+              status: "PRE_ASSESSMENT_PROGRESS",
+              details: record
+            }
+          ])
+        });
+        return { ok: true, savedToDb: true };
+      } catch (err) {
+        return { ok: true, savedToDb: false, reason: err.message };
+      }
+    },
+
+    async loadPreProgress(nip, grade) {
+      const storageKey = `simeta_pre_progress_v1_${nip}_${grade}`;
+      let localData = null;
+      try {
+        localData = JSON.parse(localStorage.getItem(storageKey) || "null");
+      } catch {}
+
+      try {
+        const q = `assessment_results?select=details,created_at&participant_nip=eq.${encodeURIComponent(nip)}&grade=eq.${encodeURIComponent(grade)}&status=eq.PRE_ASSESSMENT_PROGRESS&order=created_at.desc&limit=1`;
+        const rows = await rest(q);
+        const dbData = rows && rows[0] && rows[0].details && typeof rows[0].details === "object" ? rows[0].details : null;
+
+        if (dbData && localData) {
+          const best = (dbData.updatedAt || 0) >= (localData.updatedAt || 0) ? dbData : localData;
+          if (best.cleared) return { ok: true, data: null };
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(best));
+          } catch {}
+          return { ok: true, data: best, source: "db" };
+        }
+        const chosen = dbData || localData;
+        if (!chosen || chosen.cleared) return { ok: true, data: null };
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(chosen));
+        } catch {}
+        return { ok: true, data: chosen, source: dbData ? "db" : "local" };
+      } catch {
+        if (!localData || localData.cleared) return { ok: true, data: null };
+        return { ok: true, data: localData, source: "local" };
+      }
+    },
+
+    async clearPreProgress({ nip, fullName, grade, unit }) {
+      const storageKey = `simeta_pre_progress_v1_${nip}_${grade}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {}
+      try {
+        await rest("assessment_results", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify([
+            {
+              participant_name: fullName || "Peserta",
+              participant_nip: nip || "-",
+              grade: grade || "BOD-4",
+              unit: unit || "Umum",
+              score: 0,
+              status: "PRE_ASSESSMENT_PROGRESS",
+              details: { cleared: true, updatedAt: Date.now() }
+            }
+          ])
+        });
+      } catch {}
     }
   };
 })();

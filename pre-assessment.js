@@ -8,7 +8,9 @@
     onLaunchPersonality,
     onLaunchCap,
     onLaunchMainAssessment,
-    onBackHome
+    onBackHome,
+    onSaveProgress,
+    onResetProgress
   }) {
     cleanupAllSessions();
 
@@ -470,6 +472,7 @@
         document.getElementById("btnBioNext").addEventListener("click", () => {
           stopCam();
           pf.step = "lobby";
+          if (typeof onSaveProgress === "function") onSaveProgress();
           draw();
         });
         return;
@@ -487,7 +490,7 @@
             <div>
               <span class="grade-badge">TEKNIS PELAKSANAAN | DAFTAR AKTIVITAS PRE-ASSESSMENT (5/5)</span>
               <h2 style="font-size:21px;color:var(--primary);">Daftar Aktivitas — ${data.title}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Klik tombol <strong>Belum Dikerjakan</strong> untuk memulai setiap subtest. Disarankan menyelesaikan seluruh rangkaian dalam satu waktu pada 1 tab browser.</div>
+              <div style="font-size:13px;color:var(--text-muted);">Klik tombol <strong>Belum Dikerjakan</strong> untuk memulai setiap subtest. Progres Anda otomatis tersimpan ke database sehingga aman jika halaman di-refresh.</div>
             </div>
             ${connectionBadgeHtml()}
           </div>
@@ -495,7 +498,9 @@
           <div class="feedback-box info" style="margin-top:0;margin-bottom:16px;font-size:13px;">
             ${
               bothPreDone
-                ? "<strong>✓ Seluruh aktivitas Pre-Assessment telah berstatus Selesai!</strong> Anda sekarang dapat melanjutkan ke <strong>Main Assessment</strong>."
+                ? "<strong>✓ Seluruh aktivitas Pre-Assessment telah berstatus Selesai &amp; Tersimpan!</strong> Anda sekarang dapat melanjutkan ke <strong>Main Assessment</strong>."
+                : firstActDone || capDone
+                ? "<strong>✓ Progres Pre-Assessment Anda telah tersimpan di database.</strong> Silakan lanjutkan aktivitas yang belum dikerjakan di bawah ini."
                 : "Selesaikan kedua aktivitas Pre-Assessment di bawah ini terlebih dahulu. Hasil pengisian Anda akan memetakan kasus yang dihadapi pada Main Assessment."
             }
           </div>
@@ -513,7 +518,7 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>${gradeId === "BOD-5" ? "Psychometric Test (Kognitif, Kepribadian, Motivasi)" : "Disposition-Five (DIVE) Inventory V.2 (Personality OCEAN)"}</strong></td>
+                  <td><strong>${gradeId === "BOD-5" ? "Psychometric Test (Kognitif, Kepribadian, Motivasi)" : "Personality Test"}</strong></td>
                   <td>${gradeId === "BOD-5" ? (state.examMode === "full" ? "10" : "6") : "15 (3 Halaman × 5)"}</td>
                   <td>${pf.diveStart}</td>
                   <td>${pf.diveEnd}</td>
@@ -543,7 +548,14 @@
           </div>
 
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;flex-wrap:wrap;gap:10px;">
-            <button class="btn btn-outline-dark" id="btnLobbyHome">← Kembali ke Beranda</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-outline-dark" id="btnLobbyHome">← Kembali ke Beranda</button>
+              ${
+                firstActDone || capDone
+                  ? `<button class="btn btn-outline-dark btn-sm" id="btnResetPreProg" style="color:#dc2626;border-color:#fca5a5;">↻ Ulangi Pre-Assessment</button>`
+                  : ""
+              }
+            </div>
             <button class="btn ${bothPreDone ? "btn-emerald" : "btn-primary"}" id="btnGoMainAssess" ${bothPreDone ? "" : "disabled"}>
               ${gradeId === "BOD-5" ? "Lanjut ke Main Assessment: Case Study + Async Presentation →" : "Lanjut ke Main Assessment: Simulasi PortrAI →"}
             </button>
@@ -555,6 +567,7 @@
       if (b1) {
         b1.addEventListener("click", () => {
           pf.diveStart = new Date().toLocaleString("id-ID");
+          if (typeof onSaveProgress === "function") onSaveProgress();
           onLaunchPersonality();
         });
       }
@@ -562,7 +575,16 @@
       if (b2) {
         b2.addEventListener("click", () => {
           pf.capStart = new Date().toLocaleString("id-ID");
+          if (typeof onSaveProgress === "function") onSaveProgress();
           onLaunchCap();
+        });
+      }
+      const btnReset = document.getElementById("btnResetPreProg");
+      if (btnReset && typeof onResetProgress === "function") {
+        btnReset.addEventListener("click", () => {
+          if (confirm("Reset seluruh progres Pre-Assessment (Personality Test & CAP) untuk grade ini dan mulai dari awal?")) {
+            onResetProgress();
+          }
         });
       }
       document.getElementById("btnLobbyHome").addEventListener("click", onBackHome);

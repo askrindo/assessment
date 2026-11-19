@@ -542,6 +542,67 @@
     return state.currentUser.grade === gradeId;
   }
 
+  async function persistPreProgress(gradeId) {
+    if (!state.currentUser || !window.SupabaseService) return;
+    const pfSafe = state.preFlow ? { ...state.preFlow, faceDataUrl: null } : null;
+    await window.SupabaseService.savePreProgress({
+      nip: state.currentUser.nip,
+      fullName: state.currentUser.full_name,
+      grade: gradeId || state.selectedGrade,
+      unit: state.currentUser.unit || state.unitFilter,
+      payload: {
+        preAssessment: state.preAssessment,
+        preFlow: pfSafe,
+        flowResults: {
+          personality: state.flowResults.personality || null,
+          psychometric: typeof state.flowResults.psychometric === "number" ? state.flowResults.psychometric : null,
+          cap: typeof state.flowResults.cap === "number" ? state.flowResults.cap : null
+        }
+      }
+    });
+  }
+
+  async function hydratePreProgress(gradeId) {
+    if (!state.currentUser || !window.SupabaseService) return false;
+    const res = await window.SupabaseService.loadPreProgress(state.currentUser.nip, gradeId);
+    if (res && res.ok && res.data) {
+      const d = res.data;
+      if (d.preAssessment) {
+        state.preAssessment = {
+          personalityDone: Boolean(d.preAssessment.personalityDone),
+          capDone: Boolean(d.preAssessment.capDone),
+          focusArea: d.preAssessment.focusArea || null
+        };
+      }
+      if (d.flowResults) {
+        if (d.flowResults.personality) state.flowResults.personality = d.flowResults.personality;
+        if (typeof d.flowResults.psychometric === "number") state.flowResults.psychometric = d.flowResults.psychometric;
+        if (typeof d.flowResults.cap === "number") state.flowResults.cap = d.flowResults.cap;
+      }
+      if (d.preFlow) {
+        state.preFlow = { ...d.preFlow };
+        if (state.preAssessment.personalityDone || state.preAssessment.capDone || typeof state.flowResults.psychometric === "number") {
+          state.preFlow.step = "lobby";
+        }
+      } else if (state.preAssessment.personalityDone || state.preAssessment.capDone || typeof state.flowResults.psychometric === "number") {
+        state.preFlow = {
+          step: "lobby",
+          email: localStorage.getItem("simeta_email") || "",
+          dob: localStorage.getItem("simeta_dob") || "",
+          consentAccepted: true,
+          faceCaptured: true,
+          faceDataUrl: null,
+          diveStart: "-",
+          diveEnd: state.preAssessment.personalityDone ? "Tersimpan" : "-",
+          capStart: "-",
+          capEnd: state.preAssessment.capDone ? "Tersimpan" : "-"
+        };
+      }
+      return true;
+    }
+    return false;
+  }
+
   function openPreAssessmentLobby(gradeId) {
     if (state.currentUser && state.currentUser.role === "admin") {
       alert("Akun Admin hanya berfungsi untuk mengelola user dan tidak dapat mengerjakan assessment.");
@@ -576,12 +637,29 @@
         onBackHome: () => {
           state.inPreLobby = false;
           renderHome();
+        },
+        onSaveProgress: () => {
+          persistPreProgress(gradeId);
+        },
+        onResetProgress: async () => {
+          if (state.currentUser && window.SupabaseService) {
+            await window.SupabaseService.clearPreProgress({
+              nip: state.currentUser.nip,
+              fullName: state.currentUser.full_name,
+              grade: gradeId,
+              unit: state.currentUser.unit || state.unitFilter
+            });
+          }
+          state.preAssessment = { personalityDone: false, capDone: false, focusArea: null };
+          state.flowResults = {};
+          state.preFlow = null;
+          openPreAssessmentLobby(gradeId);
         }
       });
     }
   }
 
-  function startFullAssessment(gradeId) {
+  async function startFullAssessment(gradeId) {
     if (state.currentUser && state.currentUser.role === "admin") {
       alert("Akun Admin hanya berfungsi untuk mengelola user dan tidak dapat mengerjakan assessment.");
       renderAdminPanel();
@@ -596,6 +674,7 @@
     state.flowResults = {};
     state.preAssessment = { personalityDone: false, capDone: false, focusArea: null };
     state.preFlow = null;
+    await hydratePreProgress(gradeId);
     openPreAssessmentLobby(gradeId);
   }
 
@@ -1357,6 +1436,8 @@
             clearTimer();
             state.flowResults.cap = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
             state.preAssessment.capDone = true;
+            if (state.preFlow) state.preFlow.capEnd = new Date().toLocaleString("id-ID");
+            persistPreProgress(gradeId);
             finishedAll = true;
             draw();
           }
@@ -1478,6 +1559,8 @@
       };
       state.preAssessment.personalityDone = true;
       state.preAssessment.focusArea = lowestDim;
+      if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
+      persistPreProgress(gradeId);
       oceanPhase = "done";
       draw();
     }
@@ -1588,6 +1671,7 @@
           if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
           if (state.inPreLobby) {
             state.preFlow.step = "lobby";
+            persistPreProgress(gradeId);
             openPreAssessmentLobby(gradeId);
           } else if (state.fullFlow) nextInFlow();
           else renderReport();
@@ -1830,7 +1914,9 @@
           } else {
             clearTimer();
             state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
+            state.preAssessment.personalityDone = true;
             if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
+            persistPreProgress(gradeId);
             if (state.inPreLobby) {
               state.preFlow.step = "lobby";
               openPreAssessmentLobby(gradeId);
