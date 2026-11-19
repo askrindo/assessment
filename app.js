@@ -2129,7 +2129,12 @@
       const filteredUsers = users.filter((u) => {
         const q = searchQ.toLowerCase();
         const matchQ = !q || u.nip.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q) || u.unit.toLowerCase().includes(q);
-        const matchG = gradeFilter === "Semua" || u.grade === gradeFilter;
+        const matchG =
+          gradeFilter === "Semua"
+            ? true
+            : gradeFilter === "ADMIN"
+            ? u.role === "admin"
+            : u.role !== "admin" && u.grade === gradeFilter;
         return matchQ && matchG;
       });
 
@@ -2175,9 +2180,12 @@
                 </select>
               </div>
               <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                <label id="newAllGradesWrap" style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
                   <input type="checkbox" id="newAllGrades" /> Izinkan akses semua grade (BOD-3, BOD-4, BOD-5)
                 </label>
+                <span id="newAdminNote" style="display:none;font-size:12.5px;color:#92400e;font-weight:600;">
+                  🛡️ Akun Admin tidak memiliki grade dan hanya berfungsi mengelola user.
+                </span>
                 <button class="btn btn-emerald btn-sm" id="btnAddUser">+ Tambah User</button>
               </div>
             </div>
@@ -2186,6 +2194,7 @@
               <input type="text" id="adminSearch" class="select-input" style="flex:1;" placeholder="Cari NIP, nama, atau unit..." value="${searchQ}" />
               <select id="adminGradeFilter" class="select-input" style="min-width:160px;">
                 <option value="Semua" ${gradeFilter === "Semua" ? "selected" : ""}>Semua Grade</option>
+                <option value="ADMIN" ${gradeFilter === "ADMIN" ? "selected" : ""}>Admin</option>
                 <option value="BOD-3" ${gradeFilter === "BOD-3" ? "selected" : ""}>BOD-3</option>
                 <option value="BOD-4" ${gradeFilter === "BOD-4" ? "selected" : ""}>BOD-4</option>
                 <option value="BOD-5" ${gradeFilter === "BOD-5" ? "selected" : ""}>BOD-5</option>
@@ -2206,14 +2215,16 @@
                       <td><strong>${u.nip}</strong></td>
                       <td><input type="text" id="editName" class="select-input" style="min-width:140px;padding:4px 8px;" value="${u.full_name}" /></td>
                       <td>
-                        <select id="editGrade" class="select-input" style="min-width:95px;padding:4px 6px;">
+                        <select id="editGrade" class="select-input" style="min-width:95px;padding:4px 6px;${u.role === "admin" ? "display:none;" : ""}">
                           <option value="BOD-3" ${u.grade === "BOD-3" ? "selected" : ""}>BOD-3</option>
                           <option value="BOD-4" ${u.grade === "BOD-4" ? "selected" : ""}>BOD-4</option>
                           <option value="BOD-5" ${u.grade === "BOD-5" ? "selected" : ""}>BOD-5</option>
                         </select>
+                        <span id="editGradeAdminBadge" class="pill pill-amber" style="${u.role === "admin" ? "" : "display:none;"}">Admin</span>
                       </td>
                       <td style="text-align:center;">
-                        <input type="checkbox" id="editAllGrades" ${u.allow_all_grades ? "checked" : ""} title="Izinkan semua grade" />
+                        <input type="checkbox" id="editAllGrades" ${u.allow_all_grades ? "checked" : ""} title="Izinkan semua grade" style="${u.role === "admin" ? "display:none;" : ""}" />
+                        <span id="editAllGradesAdminDash" style="color:var(--text-muted);${u.role === "admin" ? "" : "display:none;"}">—</span>
                       </td>
                       <td>
                         <select id="editUnit" class="select-input" style="min-width:140px;padding:4px 6px;">
@@ -2242,8 +2253,14 @@
                     <tr>
                       <td><strong>${u.nip}</strong></td>
                       <td>${u.full_name}</td>
-                      <td>${u.grade}</td>
-                      <td style="text-align:center;">${u.allow_all_grades ? `<span class="pill pill-green">✓ Ya</span>` : `<span style="color:var(--text-muted);">Hanya ${u.grade}</span>`}</td>
+                      <td>${u.role === "admin" ? `<span class="pill pill-amber">Admin</span>` : u.grade}</td>
+                      <td style="text-align:center;">${
+                        u.role === "admin"
+                          ? `<span style="color:var(--text-muted);">— (Non-Asesi)</span>`
+                          : u.allow_all_grades
+                          ? `<span class="pill pill-green">✓ Ya</span>`
+                          : `<span style="color:var(--text-muted);">Hanya ${u.grade}</span>`
+                      }</td>
                       <td>${u.unit}</td>
                       <td><span class="pill ${u.role === "admin" ? "pill-amber" : "pill-green"}">${u.role}</span></td>
                       <td>${u.is_active ? `<span class="pill pill-green">Aktif</span>` : `<span class="pill pill-red">Menunggu Verifikasi</span>`}</td>
@@ -2322,14 +2339,30 @@
           draw();
         });
 
+        const newRoleEl = document.getElementById("newRole");
+        const newGradeEl = document.getElementById("newGrade");
+        const newAllGradesWrap = document.getElementById("newAllGradesWrap");
+        const newAdminNote = document.getElementById("newAdminNote");
+        if (newRoleEl && newGradeEl) {
+          const syncNewRoleUi = () => {
+            const isAdm = newRoleEl.value === "admin";
+            newGradeEl.disabled = isAdm;
+            newGradeEl.style.opacity = isAdm ? "0.45" : "1";
+            if (newAllGradesWrap) newAllGradesWrap.style.display = isAdm ? "none" : "flex";
+            if (newAdminNote) newAdminNote.style.display = isAdm ? "inline" : "none";
+          };
+          newRoleEl.addEventListener("change", syncNewRoleUi);
+          syncNewRoleUi();
+        }
+
         document.getElementById("btnAddUser").addEventListener("click", async () => {
           const nip = document.getElementById("newNip").value.trim();
           const full_name = document.getElementById("newName").value.trim();
           const password = document.getElementById("newPw").value;
-          const grade = document.getElementById("newGrade").value;
-          const unit = document.getElementById("newUnit").value;
           const role = document.getElementById("newRole").value;
-          const allow_all_grades = document.getElementById("newAllGrades").checked;
+          const grade = role === "admin" ? "BOD-3" : document.getElementById("newGrade").value;
+          const unit = document.getElementById("newUnit").value;
+          const allow_all_grades = role === "admin" ? false : document.getElementById("newAllGrades").checked;
           if (!nip || !full_name || password.length < 6) {
             statusMsg = "NIP, Nama Lengkap, dan Password (min. 6 karakter) wajib diisi.";
             draw();
@@ -2365,15 +2398,31 @@
           });
         }
 
+        const editRoleEl = document.getElementById("editRole");
+        if (editRoleEl) {
+          editRoleEl.addEventListener("change", () => {
+            const isAdm = editRoleEl.value === "admin";
+            const eg = document.getElementById("editGrade");
+            const egb = document.getElementById("editGradeAdminBadge");
+            const eag = document.getElementById("editAllGrades");
+            const eagd = document.getElementById("editAllGradesAdminDash");
+            if (eg) eg.style.display = isAdm ? "none" : "";
+            if (egb) egb.style.display = isAdm ? "" : "none";
+            if (eag) eag.style.display = isAdm ? "none" : "";
+            if (eagd) eagd.style.display = isAdm ? "" : "none";
+          });
+        }
+
         document.querySelectorAll("[data-save-user]").forEach((b) => {
           b.addEventListener("click", async () => {
             const id = b.getAttribute("data-save-user");
+            const roleVal = document.getElementById("editRole").value;
             const res = await window.SupabaseService.updateUser(id, {
               full_name: document.getElementById("editName").value.trim(),
-              grade: document.getElementById("editGrade").value,
-              allow_all_grades: document.getElementById("editAllGrades").checked,
+              grade: roleVal === "admin" ? "BOD-3" : document.getElementById("editGrade").value,
+              allow_all_grades: roleVal === "admin" ? false : document.getElementById("editAllGrades").checked,
               unit: document.getElementById("editUnit").value.trim(),
-              role: document.getElementById("editRole").value,
+              role: roleVal,
               is_active: document.getElementById("editActive").value === "true"
             });
             editingId = null;
