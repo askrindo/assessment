@@ -11,13 +11,16 @@
     renderReport
   }) {
     let idx = 0;
-    let activeMod = "email"; // email | chat | call | documents | eval
+    let startedAssessment = false;
+    let finishedReading = false;
+    let activeMod = "home"; // home | email | chat | call | documents | eval
     let ws = createWorkspace(pool[0]);
     let ringtoneInterval = null;
     let ringAudioCtx = null;
     let callTriggerTimeout = null;
     let callDurationInterval = null;
     let callCamStream = null;
+    let selectedVoiceName = "";
 
     function startCallElapsedTimer() {
       if (callDurationInterval) return;
@@ -51,9 +54,7 @@
           osc.start(now + offset);
           osc.stop(now + offset + 0.19);
         });
-      } catch {
-        // ignore audio autoplay restrictions
-      }
+      } catch {}
     }
 
     function startRingtone() {
@@ -87,17 +88,12 @@
       window.speechSynthesis.onvoiceschanged = () => getIndonesianVoices();
     }
 
-    let selectedVoiceName = "";
-
     function speakIndonesian(text) {
       try {
         if (!("speechSynthesis" in window)) return;
         window.speechSynthesis.cancel();
         const voices = getIndonesianVoices();
-        const chosen =
-          (selectedVoiceName && voices.find((v) => v.name === selectedVoiceName)) || voices[0] || null;
-
-        // Pecah per kalimat agar intonasi dan jeda terdengar alami seperti manusia
+        const chosen = (selectedVoiceName && voices.find((v) => v.name === selectedVoiceName)) || voices[0] || null;
         const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
         sentences.forEach((sentence) => {
           const clean = sentence.trim();
@@ -109,9 +105,7 @@
           utt.pitch = 1.02;
           window.speechSynthesis.speak(utt);
         });
-      } catch {
-        // ignore speech errors
-      }
+      } catch {}
     }
 
     function stopCallTimers() {
@@ -141,12 +135,12 @@
       return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
     }
 
-    function scheduleIncomingCall(minMs = 12000, maxMs = 45000) {
+    function scheduleIncomingCall(minMs = 15000, maxMs = 45000) {
       if (callTriggerTimeout) clearTimeout(callTriggerTimeout);
-      if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
+      if (!startedAssessment || ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
       const delayMs = randomCallDelay(minMs, maxMs);
       callTriggerTimeout = setTimeout(() => {
-        if (ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
+        if (!startedAssessment || ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
         ws.incomingCallActive = true;
         ws.incomingCallShown = true;
         startRingtone();
@@ -185,17 +179,7 @@
         saveDrafts();
         activeMod = "call";
         ws.callStarted = true;
-        if (!callDurationInterval) {
-          callDurationInterval = setInterval(() => {
-            ws.callSeconds++;
-            const el = document.getElementById("callElapsedEl");
-            if (el) {
-              const mm = String(Math.floor(ws.callSeconds / 60)).padStart(2, "0");
-              const ss = String(ws.callSeconds % 60).padStart(2, "0");
-              el.textContent = `${mm}:${ss}`;
-            }
-          }, 1000);
-        }
+        startCallElapsedTimer();
         draw();
         speakIndonesian(item.call.prompt);
       });
@@ -209,18 +193,40 @@
 
     function createWorkspace(item) {
       return {
+        emailTab: "inbox", // inbox | draft
         selectedEmail: 0,
-        emailReply: "",
-        emailSent: false,
-        chatMessages: [{ sender: item.chat.partnerName, role: "ai", text: item.chat.opening }],
-        chatTurn: 0,
+        emailReplies: { 0: "", 1: "" },
+        emailSentMap: { 0: false, 1: false },
+        activeContact: 0,
+        contacts: [
+          {
+            name: item.chat.partnerName,
+            role: "Stakeholder Utama",
+            messages: [{ sender: item.chat.partnerName, role: "ai", text: item.chat.opening }],
+            turn: 0
+          },
+          {
+            name: "Grup Koordinasi Internal",
+            role: "Tim Operasional & Risiko",
+            messages: [
+              {
+                sender: "Koordinator Tim",
+                role: "ai",
+                text: `Halo Pak/Bu, kami sudah membaca arahan awal terkait "${item.title}". Apa langkah prioritas yang harus tim kami eksekusi hari ini?`
+              }
+            ],
+            turn: 0
+          }
+        ],
         incomingCallActive: false,
         incomingCallShown: false,
         callStarted: false,
         callEnded: false,
         callSeconds: 0,
         callResponse: "",
-        callAiProbe: "",
+        callTranscript: [{ speaker: item.call.partnerName, text: item.call.prompt }],
+        docView: "files", // files | editor
+        openedFileIdx: 0,
         docExecSummary: "",
         docAnalysis: "",
         docActionPlan: "",
@@ -228,7 +234,7 @@
         aiChat: [
           {
             role: "ai",
-            text: `Halo! Saya PortrAI Assistant. Saya siap membantu Anda menganalisa skenario "${item.title}". Klik pertanyaan cepat di bawah atau ketik pertanyaan Anda.`
+            text: `Halo! Saya Your AI Assistant. Saya dapat membantu Anda memahami gambaran pekerjaan pada skenario "${item.title}".`
           }
         ]
       };
@@ -236,26 +242,85 @@
 
     function draw() {
       const item = pool[idx];
-      const emailDone = ws.emailSent || ws.emailReply.trim().length >= 25;
-      const chatDone = ws.chatMessages.filter((m) => m.role === "user").length >= 2;
-      const callDone = ws.callResponse.trim().length >= 25;
+
+      // SLIDE 1: HARI-H INSTRUKSI UMUM SEBELUM MULAI ASSESSMENT
+      if (!startedAssessment) {
+        root.innerHTML = `
+          <div class="card" style="max-width:860px;margin:0 auto;">
+            <div class="assess-header">
+              <div>
+                <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Kamu siap untuk memulai simulasi test</div>
+                <div style="font-size:26px;font-weight:800;color:var(--primary);font-variant-numeric:tabular-nums;">00:00:00</div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <span class="pill pill-green">✓ Compatibility</span>
+                <span class="pill pill-amber">✓ Instruction</span>
+                <button class="btn btn-accent" id="btnStartPortraiNow" ${finishedReading ? "" : "disabled"}>Mulai Assessment</button>
+              </div>
+            </div>
+
+            <div class="memo-box" style="background:#fff;border-left-color:var(--primary);padding:24px;">
+              <h2 style="text-align:center;color:var(--primary);margin-bottom:14px;letter-spacing:0.5px;">INSTRUKSI UMUM</h2>
+              <h4 style="margin-bottom:8px;">SELAMAT DATANG DI VIRTUAL ASSESSMENT CENTER</h4>
+              <p style="margin-bottom:10px;">
+                Anda akan mengikuti simulasi kerja interaktif dimana Anda berperan sebagai pemimpin (<strong>${data.roleLabel}</strong>).
+                Dalam proses asesmen ini, Anda akan berinteraksi melalui <strong>Email</strong>, <strong>Chat</strong>, dan <strong>Call</strong>,
+                serta menggunakan fitur <strong>Documents</strong> dan <strong>Virtual AI Assistant</strong>.
+              </p>
+              <p style="margin-bottom:10px;">
+                <strong>Alur Pengerjaan yang Dianjurkan:</strong>
+              </p>
+              <ol style="margin-left:20px;margin-bottom:12px;line-height:1.7;">
+                <li>Mulailah dengan membaca <strong>Message from the Executives</strong> di laman <strong>Home</strong> serta dokumen referensi pada fitur <strong>Documents</strong>.</li>
+                <li>Masuk ke fitur <strong>Email</strong> dan <strong>Chat</strong> untuk membalas seluruh pesan masuk secara tepat dan berbasis data.</li>
+                <li>Angkat dan berinteraksi pada simulasi <strong>Call</strong> ketika panggilan virtual berlangsung, lalu susun dokumen analisa kerja Anda.</li>
+                <li>Jika seluruh masalah telah ditangani, klik <strong>Selesaikan Assessment</strong> pada pojok kanan atas.</li>
+              </ol>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;">
+              <input type="checkbox" id="chkFinishedRead" ${finishedReading ? "checked" : ""} />
+              I finished read this section (Saya telah selesai membaca instruksi umum)
+            </label>
+          </div>
+        `;
+
+        document.getElementById("chkFinishedRead").addEventListener("change", (e) => {
+          finishedReading = e.target.checked;
+          document.getElementById("btnStartPortraiNow").disabled = !finishedReading;
+        });
+        document.getElementById("btnStartPortraiNow").addEventListener("click", () => {
+          if (!finishedReading) return;
+          startedAssessment = true;
+          startTimer(pool[0].durationSec, "portraiTimer", () => {
+            activeMod = "eval";
+            draw();
+          });
+          scheduleIncomingCall(15000, 45000);
+          draw();
+        });
+        return;
+      }
+
+      const emailDone = ws.emailSentMap[0] || ws.emailReplies[0].trim().length >= 25;
+      const totalUserChats = ws.contacts.reduce((acc, c) => acc + c.messages.filter((m) => m.role === "user").length, 0);
+      const chatDone = totalUserChats >= 2;
+      const callDone = ws.callTranscript.filter((t) => t.speaker === "Anda").length >= 1 || ws.callResponse.trim().length >= 20;
       const docDone = (ws.docExecSummary + ws.docAnalysis + ws.docActionPlan).trim().length >= 30;
 
       if (activeMod === "eval") {
         stopCallTimers();
-        const pop = document.getElementById("incomingCallPopup");
-        if (pop) pop.remove();
         root.innerHTML = `<div class="card">${renderEval(item)}</div>`;
         document.getElementById("btnNextPortrai").addEventListener("click", () => {
           if (idx + 1 < pool.length) {
             idx++;
             ws = createWorkspace(pool[idx]);
-            activeMod = "email";
+            activeMod = "home";
             startTimer(pool[idx].durationSec, "portraiTimer", () => {
               activeMod = "eval";
               draw();
             });
-            scheduleIncomingCall(12000, 45000);
+            scheduleIncomingCall(15000, 45000);
             draw();
           } else {
             if (state.fullFlow) nextInFlow();
@@ -267,17 +332,21 @@
 
       root.innerHTML = `
         <div class="portrai-shell">
-          <!-- Left App Rail -->
+          <!-- Left App Rail (Persis Slide: Home, Chat, Email, Call, Documents) -->
           <aside class="portrai-rail">
-            <button class="rail-btn ${activeMod === "email" ? "active" : ""}" data-mod="email">
-              <span class="rail-icon">✉️</span>
-              <span>Email</span>
-              <span class="rail-badge ${emailDone ? "done" : ""}">${emailDone ? "✓" : "1"}</span>
+            <button class="rail-btn ${activeMod === "home" ? "active" : ""}" data-mod="home">
+              <span class="rail-icon">🏠</span>
+              <span>Home</span>
             </button>
             <button class="rail-btn ${activeMod === "chat" ? "active" : ""}" data-mod="chat">
               <span class="rail-icon">💬</span>
               <span>Chat</span>
-              <span class="rail-badge ${chatDone ? "done" : ""}">${chatDone ? "✓" : "!"}</span>
+              <span class="rail-badge ${chatDone ? "done" : ""}">${chatDone ? "✓" : ws.contacts.length}</span>
+            </button>
+            <button class="rail-btn ${activeMod === "email" ? "active" : ""}" data-mod="email">
+              <span class="rail-icon">✉️</span>
+              <span>Email</span>
+              <span class="rail-badge ${emailDone ? "done" : ""}">${emailDone ? "✓" : "2"}</span>
             </button>
             <button class="rail-btn ${activeMod === "call" ? "active" : ""}" data-mod="call">
               <span class="rail-icon">📞</span>
@@ -285,35 +354,36 @@
               <span class="rail-badge ${callDone ? "done" : ""}">${callDone ? "✓" : "!"}</span>
             </button>
             <button class="rail-btn ${activeMod === "documents" ? "active" : ""}" data-mod="documents">
-              <span class="rail-icon">📄</span>
+              <span class="rail-icon">📁</span>
               <span>Docs</span>
-              <span class="rail-badge ${docDone ? "done" : ""}">${docDone ? "✓" : "1"}</span>
+              <span class="rail-badge ${docDone ? "done" : ""}">${docDone ? "✓" : "3"}</span>
             </button>
           </aside>
 
           <!-- Main Virtual Workplace -->
           <section class="portrai-main">
             <div class="portrai-topbar">
-              <div>
-                <span class="grade-badge" style="margin-bottom:2px;">${data.title} • PortrAI Virtual Office (${idx + 1}/${pool.length})</span>
-                <div style="font-weight:800;font-size:15px;color:var(--primary);">${item.title}</div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span class="pill" style="background:#001B2E;color:#fff;">● Proctoring &nbsp;|&nbsp; <span style="color:#34d399;">📶 Strong</span></span>
+                <span style="font-weight:800;font-size:13.5px;color:var(--primary);">${data.title} (${idx + 1}/${pool.length})</span>
               </div>
-              <div style="display:flex;align-items:center;gap:10px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-size:11.5px;color:var(--text-muted);font-weight:600;">Assessment berakhir dalam</span>
                 <div class="timer-pill" id="portraiTimer">25:00</div>
-                <button class="btn btn-emerald btn-sm" id="btnFinishPortrai">Selesai &amp; Evaluasi</button>
+                <button class="btn btn-accent btn-sm" id="btnFinishPortrai">Selesaikan Assessment</button>
               </div>
             </div>
 
             <div class="portrai-body">
-              ${renderModuleBody(item)}
+              ${renderModuleBody(item, emailDone, chatDone, docDone)}
             </div>
           </section>
 
-          <!-- Docked AI Assistant Copilot -->
+          <!-- Docked Virtual Assistant (Slide 7: Your AI Assistant) -->
           <aside class="portrai-assistant">
             <div class="assistant-head">
-              <span>🤖 PortrAI Assistant</span>
-              <span style="font-size:11px;opacity:0.85;">Built-in Copilot</span>
+              <span>🤖 Your AI Assistant</span>
+              <span style="font-size:11px;opacity:0.85;">Virtual Assistant</span>
             </div>
             <div style="padding:8px 10px;border-bottom:1px solid var(--border);background:#fff;">
               <div class="tag-row" style="margin:0;">
@@ -327,7 +397,7 @@
                 .map(
                   (m) => `
                 <div class="chat-msg ${m.role}" style="max-width:92%;font-size:12.5px;">
-                  <div class="chat-sender">${m.role === "ai" ? "PortrAI Assistant" : "Anda"}</div>
+                  <div class="chat-sender">${m.role === "ai" ? "Your AI Assistant" : "Anda"}</div>
                   <div>${m.text}</div>
                 </div>
               `
@@ -336,8 +406,8 @@
             </div>
             <div class="assistant-foot">
               <div style="display:flex;gap:6px;">
-                <input type="text" id="aiCopilotInput" class="select-input" style="min-width:0;flex:1;padding:7px 10px;font-size:12.5px;" placeholder="Tanya AI Assistant..." />
-                <button class="btn btn-primary btn-sm" id="btnAskAi">Tanya</button>
+                <input type="text" id="aiCopilotInput" class="select-input" style="min-width:0;flex:1;padding:7px 10px;font-size:12.5px;" placeholder="Type your message here..." />
+                <button class="btn btn-primary btn-sm" id="btnAskAi">➤</button>
               </div>
             </div>
           </aside>
@@ -347,34 +417,118 @@
       bindEvents(item);
     }
 
-    function renderModuleBody(item) {
+    function renderModuleBody(item, emailDone, chatDone, docDone) {
+      // SLIDE 2 & 9: HOME DASHBOARD (Message from the Executives + Notification Center)
+      if (activeMod === "home") {
+        const uname = state.currentUser ? state.currentUser.full_name : "Peserta";
+        return `
+          <div style="margin-bottom:16px;">
+            <div style="font-size:13px;color:var(--text-muted);font-weight:600;">Hi ${uname}</div>
+            <h2 style="font-size:22px;color:var(--primary);font-weight:800;">Welcome, ${data.roleLabel}</h2>
+          </div>
+
+          <div class="grid-2" style="grid-template-columns:1.25fr 0.85fr;align-items:start;">
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:0;">
+              <div style="background:linear-gradient(135deg,#002B49,#0A3D62);color:#fff;padding:12px 16px;font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;">
+                <span>📌 Message from the Executives</span>
+                <span style="font-size:11.5px;opacity:0.85;">Page 1 / 1</span>
+              </div>
+              <div style="padding:18px;font-size:13.5px;line-height:1.65;">
+                <div style="font-weight:800;color:var(--primary);margin-bottom:8px;">President Director — Arahan Awal Sesi</div>
+                <p style="margin-bottom:10px;">Dear ${uname},</p>
+                <p style="margin-bottom:10px;">
+                  Selamat bergabung dalam peran Anda hari ini. Fokus utama kita adalah menangani isu strategis terkait:
+                  <strong>"${item.title}"</strong> (Unit: ${item.unit}).
+                </p>
+                <p style="margin-bottom:10px;">
+                  Mohon tinjau seluruh dokumen referensi di menu <strong>Docs</strong>, balas setiap <strong>Email</strong> dan <strong>Chat</strong> yang masuk secara tepat,
+                  serta berikan arahan tegas pada sesi <strong>Call</strong> bersama rekan kerja Anda.
+                </p>
+                <p style="font-weight:700;color:var(--primary);">Best regards,<br/>President Director</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 style="color:var(--primary);margin-bottom:10px;">Notification Center</h4>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div class="memo-box" style="margin:0;border-left-color:var(--primary-light);background:#fff;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong>💬 Chats (${ws.contacts.length} percakapan)</strong>
+                    <button class="btn btn-outline-dark btn-sm" data-mod="chat">View Chats</button>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${item.chat.partnerName}: pesan baru menunggu respon.</div>
+                </div>
+
+                <div class="memo-box" style="margin:0;border-left-color:var(--accent);background:#fff;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong>✉️ Emails (2 pesan masuk)</strong>
+                    <button class="btn btn-outline-dark btn-sm" data-mod="email">View Mails</button>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${item.email.subject}</div>
+                </div>
+
+                <div class="memo-box" style="margin:0;border-left-color:var(--emerald);background:#fff;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong>📁 New Document</strong>
+                    <button class="btn btn-outline-dark btn-sm" data-mod="documents">Open Docs</button>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${item.documents.title}</div>
+                </div>
+
+                <div class="memo-box" style="margin:0;border-left-color:#ef4444;background:#fff;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong>📞 Coming Up Call</strong>
+                    <button class="btn btn-outline-dark btn-sm" data-mod="call">Open Call</button>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${item.call.partnerName} siap menghubungi Anda.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // SLIDE 3: EMAIL (Inbox & Draft tabs + Multiple Emails)
       if (activeMod === "email") {
         const emails = [
           {
             from: item.email.from,
             subject: item.email.subject,
-            tag: "PRIORITAS TINGGI",
+            time: "09:15 AM",
+            tag: ws.emailSentMap[0] ? "TERBALAS ✓" : "PRIORITAS TINGGI",
             body: item.email.body
           },
           {
-            from: "Divisi Kepatuhan & Tata Kelola <compliance@asuransi-kredit.co.id>",
-            subject: "FYI: Pengingat Prinsip Kehati-hatian & Batas Kewenangan POJK",
-            tag: "MEMO INTERNAL",
-            body: "<p>Mengingatkan seluruh pimpinan unit agar setiap persetujuan penjaminan, pembayaran klaim, dan transaksi keuangan tetap mematuhi SOP, limit kewenangan, serta kelengkapan dokumen audit.</p>"
+            from: "Divisi Kepatuhan & Tata Kelola <compliance@perusahaan.co.id>",
+            subject: "Konfirmasi Kepatuhan SOP & Laporan Mitigasi Risiko",
+            time: "09:30 AM",
+            tag: ws.emailSentMap[1] ? "TERBALAS ✓" : "PERLU RESPON",
+            body: `<p>Yth. Pimpinan Unit,<br/>Mohon konfirmasi singkat langkah kontrol kepatuhan dan batas kewenangan yang Anda terapkan pada kasus "${item.title}" agar dapat kami catat dalam laporan tata kelola mingguan.</p>`
           }
         ];
         const cur = emails[ws.selectedEmail];
 
         return `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;">
+              <button class="btn ${ws.emailTab === "inbox" ? "btn-primary" : "btn-outline-dark"} btn-sm" id="btnTabInbox">📥 Inbox (${emails.length})</button>
+              <button class="btn ${ws.emailTab === "draft" ? "btn-primary" : "btn-outline-dark"} btn-sm" id="btnTabDraft">📝 Draft</button>
+            </div>
+            <span style="font-size:12px;color:var(--text-muted);">Pastikan Anda membalas seluruh email yang masuk.</span>
+          </div>
+
           <div class="email-layout">
             <div class="email-list">
               ${emails
                 .map(
                   (em, i) => `
                 <div class="email-item ${ws.selectedEmail === i ? "active" : ""}" data-email-idx="${i}">
-                  <div class="email-item-sender">${em.from.split("<")[0].trim()}</div>
+                  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+                    <span class="email-item-sender">${em.from.split("<")[0].trim()}</span>
+                    <span>${em.time}</span>
+                  </div>
                   <div class="email-item-subj">${em.subject}</div>
-                  <span class="tag" style="margin-top:4px;display:inline-block;">${em.tag}</span>
+                  <span class="tag" style="margin-top:4px;display:inline-block;background:${ws.emailSentMap[i] ? "var(--emerald-soft)" : "#e2e8f0"};color:${ws.emailSentMap[i] ? "#065f46" : "#1e293b"};">${em.tag}</span>
                 </div>
               `
                 )
@@ -382,142 +536,213 @@
             </div>
             <div>
               <div class="memo-box" style="margin-bottom:12px;">
-                <div style="font-size:12px;color:var(--text-muted);"><strong>Dari:</strong> ${cur.from}</div>
+                <div style="font-size:12px;color:var(--text-muted);"><strong>Dari:</strong> ${cur.from} • ${cur.time}</div>
                 <h4 style="margin-top:4px;">${cur.subject}</h4>
                 <div style="margin-top:8px;">${cur.body}</div>
               </div>
-              ${
-                ws.selectedEmail === 0
-                  ? `
-                <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">
-                  Balasan Email Resmi Anda ${ws.emailSent ? '<span class="pill pill-green">✓ Terkirim</span>' : ""}:
-                </label>
-                <textarea class="textarea-box" id="emailReplyInput" placeholder="Yth. Bapak/Ibu...\n\nMenindaklanjuti email di atas, berikut keputusan dan langkah kami...">${ws.emailReply}</textarea>
-                <div style="display:flex;justify-content:flex-end;margin-top:10px;">
-                  <button class="btn btn-primary btn-sm" id="btnSendEmail">${ws.emailSent ? "Perbarui & Kirim Ulang" : "Kirim Balasan Email"}</button>
+              <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">
+                Balasan Email Anda ${ws.emailSentMap[ws.selectedEmail] ? '<span class="pill pill-green">✓ Terkirim</span>' : ""}:
+              </label>
+              <textarea class="textarea-box" id="emailReplyInput" placeholder="Yth. Bapak/Ibu...\n\nMenindaklanjuti email di atas, berikut keputusan dan langkah kami...">${ws.emailReplies[ws.selectedEmail] || ""}</textarea>
+              <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+                <button class="btn btn-primary btn-sm" id="btnSendEmail">${ws.emailSentMap[ws.selectedEmail] ? "Perbarui & Kirim Ulang" : "Kirim Balasan Email"}</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // SLIDE 4: CHAT (Multi-contact sidebar + Live chat)
+      if (activeMod === "chat") {
+        const curC = ws.contacts[ws.activeContact];
+        return `
+          <div class="email-layout">
+            <div class="email-list">
+              <div style="padding:10px 12px;font-weight:800;font-size:12px;color:var(--primary);border-bottom:1px solid var(--border);background:#fff;">Daftar Kontak Chat</div>
+              ${ws.contacts
+                .map(
+                  (c, i) => `
+                <div class="email-item ${ws.activeContact === i ? "active" : ""}" data-contact-idx="${i}">
+                  <div class="email-item-sender">${c.name}</div>
+                  <div style="font-size:11.5px;color:var(--text-muted);">${c.role}</div>
+                  <span class="tag" style="margin-top:4px;display:inline-block;">${c.messages.filter((m) => m.role === "user").length} balasan</span>
                 </div>
               `
-                  : `<div class="feedback-box info" style="margin-top:0;">Memo ini bersifat informasi (FYI). Fokuskan balasan Anda pada email pertama (Prioritas Tinggi).</div>`
-              }
+                )
+                .join("")}
             </div>
-          </div>
-        `;
-      }
-
-      if (activeMod === "chat") {
-        return `
-          <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <strong style="color:var(--primary);">${item.chat.partnerName}</strong>
-              <span class="pill pill-green" style="margin-left:6px;">Online</span>
-            </div>
-            <span style="font-size:12px;color:var(--text-muted);">Minimal 2 kali interaksi untuk bukti perilaku lengkap</span>
-          </div>
-          <div class="chat-box" id="chatBox" style="max-height:360px;">
-            ${ws.chatMessages
-              .map(
-                (m) => `
-              <div class="chat-msg ${m.role}">
-                <div class="chat-sender">${m.sender}</div>
-                <div>${m.text}</div>
+              <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <strong style="color:var(--primary);">${curC.name}</strong>
+                  <span class="pill pill-green" style="margin-left:6px;">● Online</span>
+                </div>
+                <span style="font-size:12px;color:var(--text-muted);">Respon seluruh chat yang masuk</span>
               </div>
-            `
-              )
-              .join("")}
-          </div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="chatInput" class="select-input" style="flex:1;" placeholder="Ketik pesan negosiasi / role-play Anda..." />
-            <button class="btn btn-primary" id="btnSendChat">Kirim</button>
+              <div class="chat-box" id="chatBox" style="max-height:340px;">
+                ${curC.messages
+                  .map(
+                    (m) => `
+                  <div class="chat-msg ${m.role}">
+                    <div class="chat-sender">${m.sender}</div>
+                    <div>${m.text}</div>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="chatInput" class="select-input" style="flex:1;" placeholder="Type your message..." />
+                <button class="btn btn-primary" id="btnSendChat">➤</button>
+              </div>
+            </div>
           </div>
         `;
       }
 
+      // SLIDE 5: CALL (Left Video Tiles + Right Live Transcript)
       if (activeMod === "call") {
         return `
-          <div class="call-stage">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <span class="pill pill-green">${ws.callStarted ? "● Live Virtual Call • <span id='callElapsedEl'>" + String(Math.floor(ws.callSeconds / 60)).padStart(2, "0") + ":" + String(ws.callSeconds % 60).padStart(2, "0") + "</span>" : "Panggilan Virtual Siap"}</span>
-              <span style="font-size:12px;color:#cbd5e1;">${item.call.partnerName}</span>
-            </div>
-            <div class="call-tiles">
-              <div class="call-tile ${ws.callStarted ? "speaking" : ""}">
-                <div class="call-avatar">AI</div>
-                <div style="font-weight:700;font-size:14px;">${item.call.partnerName}</div>
-                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${ws.callStarted ? "Menunggu arahan Anda..." : "Klik Mulai Panggilan"}</div>
+          <div class="grid-2" style="grid-template-columns:1.1fr 0.9fr;align-items:start;">
+            <div>
+              <div class="call-stage" style="margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <span class="pill pill-green">${ws.callStarted ? "● Live Call • <span id='callElapsedEl'>" + String(Math.floor(ws.callSeconds / 60)).padStart(2, "0") + ":" + String(ws.callSeconds % 60).padStart(2, "0") + "</span>" : "Siap Terhubung"}</span>
+                  <button class="btn ${ws.callStarted ? "btn-danger" : "btn-emerald"} btn-sm" id="btnToggleCall">
+                    ${ws.callStarted ? "📞 End Call" : "📞 Mulai Call"}
+                  </button>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
+                  <div class="call-tile ${ws.callStarted ? "speaking" : ""}">
+                    <div class="call-avatar">AI</div>
+                    <div style="font-weight:700;font-size:14px;">${item.call.partnerName}</div>
+                  </div>
+                  <div class="call-tile">
+                    ${
+                      callCamStream
+                        ? `<video id="callSelfCam" autoplay muted playsinline style="width:100%;max-height:110px;border-radius:8px;object-fit:cover;background:#000;margin-bottom:6px;"></video>`
+                        : `<div class="call-avatar" style="background:linear-gradient(135deg,#F37021,#FF8C38);">ANDA</div>`
+                    }
+                    <div style="font-weight:700;font-size:14px;">${state.currentUser ? state.currentUser.full_name : "Peserta"}</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                  <button class="btn btn-outline btn-sm" id="btnToggleCallCam">${callCamStream ? "Matikan Kamera" : "📹 Kamera"}</button>
+                  <button class="btn btn-outline btn-sm" id="btnReplayVoice">🔊 Dengar Suara</button>
+                  <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara</button>
+                </div>
+                <div style="margin-top:8px;text-align:center;">
+                  <select id="voiceSelect" class="select-input" style="min-width:200px;padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.1);color:#e2e8f0;border-color:rgba(255,255,255,0.2);">
+                    ${
+                      getIndonesianVoices().length > 0
+                        ? getIndonesianVoices()
+                            .map((v) => `<option value="${v.name}" style="color:#0f172a;" ${selectedVoiceName === v.name ? "selected" : ""}>Suara: ${v.name}</option>`)
+                            .join("")
+                        : `<option value="" style="color:#0f172a;">Suara Default Sistem</option>`
+                    }
+                  </select>
+                </div>
               </div>
-              <div class="call-tile">
-                ${
-                  callCamStream
-                    ? `<video id="callSelfCam" autoplay muted playsinline style="width:100%;max-height:110px;border-radius:8px;object-fit:cover;background:#000;margin-bottom:6px;"></video>`
-                    : `<div class="call-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">ANDA</div>`
-                }
-                <div style="font-weight:700;font-size:14px;">${state.currentUser ? state.currentUser.full_name : "Peserta"}</div>
-                <div style="font-size:12px;color:#94a3b8;margin-top:4px;">${gradeId}</div>
+            </div>
+
+            <div>
+              <div class="card" style="padding:16px;margin-bottom:12px;">
+                <h4 style="color:var(--primary);margin-bottom:10px;">Transcript</h4>
+                <div class="chat-box" style="max-height:220px;background:#f8fafc;">
+                  ${ws.callTranscript
+                    .map(
+                      (t) => `
+                    <div style="padding:8px 10px;background:#fff;border-radius:8px;border:1px solid var(--border);font-size:12.5px;">
+                      <div style="font-weight:800;color:${t.speaker === "Anda" ? "var(--accent)" : "var(--primary)"};margin-bottom:2px;">${t.speaker}</div>
+                      <div>${t.text}</div>
+                    </div>
+                  `
+                    )
+                    .join("")}
+                </div>
+                <textarea class="textarea-box" id="callRespInput" style="min-height:90px;margin-top:8px;" placeholder="Ketik atau diktekan arahan Anda dalam panggilan ini...">${ws.callResponse}</textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                  <button class="btn btn-primary btn-sm" id="btnSendCallReply">Kirim Respon Lisan</button>
+                </div>
               </div>
             </div>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center;">
-              <button class="btn ${ws.callStarted ? "btn-danger" : "btn-emerald"} btn-sm" id="btnToggleCall">
-                ${ws.callStarted ? "Akhiri Panggilan" : "Mulai Panggilan Virtual"}
-              </button>
-              <button class="btn btn-outline btn-sm" id="btnToggleCallCam">${callCamStream ? "Matikan Kamera" : "📹 Nyalakan Kamera"}</button>
-              <button class="btn btn-outline btn-sm" id="btnReplayVoice">🔊 Dengar Suara Rekan</button>
-              <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara</button>
-            </div>
-            <div style="margin-top:10px;text-align:center;">
-              <select id="voiceSelect" class="select-input" style="min-width:220px;padding:5px 10px;font-size:11.5px;background:rgba(255,255,255,0.1);color:#e2e8f0;border-color:rgba(255,255,255,0.2);">
-                ${
-                  getIndonesianVoices().length > 0
-                    ? getIndonesianVoices()
-                        .map(
-                          (v) =>
-                            `<option value="${v.name}" style="color:#0f172a;" ${(selectedVoiceName ? v.name === selectedVoiceName : false) ? "selected" : ""}>Suara: ${v.name}</option>`
-                        )
-                        .join("")
-                    : `<option value="" style="color:#0f172a;">Suara Default Sistem (Buka di Edge/Chrome untuk suara Natural)</option>`
-                }
-              </select>
-            </div>
-          </div>
-          <div class="memo-box" style="margin-bottom:12px;">
-            <h4>Situasi Panggilan Virtual:</h4>
-            <p>${item.call.prompt}</p>
-          </div>
-          ${ws.callAiProbe ? `<div class="feedback-box info" style="margin-bottom:12px;margin-top:0;"><strong>Tanggapan Lanjutan Rekan Call:</strong> ${ws.callAiProbe}</div>` : ""}
-          <label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Arahan / Respon Lisan Anda dalam Call:</label>
-          <textarea class="textarea-box" id="callRespInput" placeholder="Sampaikan arahan, coaching, atau keputusan Anda secara langsung...">${ws.callResponse}</textarea>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-            <button class="btn btn-primary btn-sm" id="btnSendCallReply">Kirim Respon &amp; Dengar Tanggapan Rekan</button>
           </div>
         `;
       }
 
+      // SLIDE 6: DOCUMENTS (Folders + All Files Table + Working Editor)
       if (activeMod === "documents") {
+        const files = [
+          { name: item.documents.title, date: "Hari ini • 08:30", owner: "Executive Office", loc: "Project_X", content: item.documents.brief },
+          { name: "Pedoman Tata Kelola & Batas Kewenangan", date: "Hari ini • 08:45", owner: "Compliance Div", loc: "Policy_Docs", content: "Setiap keputusan bisnis wajib mempertimbangkan keseimbangan antara target pertumbuhan, kepatuhan SOP/regulasi, serta mitigasi risiko operasional." },
+          { name: "Ringkasan KPI & SLA Layanan Mitra", date: "Hari ini • 09:00", owner: "Operations", loc: "Reports", content: "Target SLA layanan minimal 90% tepat waktu dengan tingkat akurasi dokumen 100%. Eskalasi anomali wajib didokumentasikan secara tertulis." }
+        ];
+        const opened = files[ws.openedFileIdx];
+
         return `
-          <div class="memo-box" style="border-left-color:var(--emerald);background:#f0fdf4;">
-            <h4>${item.documents.title}</h4>
-            <p>${item.documents.brief}</p>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="font-size:14px;color:var(--primary);">Editor Dokumen Kerja</strong>
-            <span style="font-size:12px;color:var(--text-muted);">${ws.docSavedAt ? "Tersimpan pukul " + ws.docSavedAt : "Belum disimpan"}</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">1. Ringkasan Eksekutif &amp; Keputusan Utama</label>
-              <textarea class="textarea-box" id="docExecInput" style="min-height:85px;" placeholder="Ringkasan keputusan strategis/manajerial Anda...">${ws.docExecSummary}</textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;gap:8px;">
+              <button class="btn ${ws.docView === "files" ? "btn-primary" : "btn-outline-dark"} btn-sm" id="btnDocFiles">📁 Folders &amp; All Files</button>
+              <button class="btn ${ws.docView === "editor" ? "btn-primary" : "btn-outline-dark"} btn-sm" id="btnDocEditor">📝 Buat / Edit Dokumen Kerja</button>
             </div>
-            <div>
-              <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">2. Analisa Data, Rasio, &amp; Risiko</label>
-              <textarea class="textarea-box" id="docAnalInput" style="min-height:95px;" placeholder="Analisa angka portofolio, SLA, atau kepatuhan...">${ws.docAnalysis}</textarea>
-            </div>
-            <div>
-              <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">3. Rencana Aksi &amp; Mitigasi (PIC &amp; Timeline)</label>
-              <textarea class="textarea-box" id="docPlanInput" style="min-height:95px;" placeholder="Langkah implementasi, target waktu, dan kontrol...">${ws.docActionPlan}</textarea>
-            </div>
+            <span style="font-size:12px;color:var(--text-muted);">${ws.docSavedAt ? "Tersimpan " + ws.docSavedAt : "Pastikan membaca seluruh dokumen"}</span>
           </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:10px;">
-            <button class="btn btn-primary btn-sm" id="btnSaveDoc">Simpan Dokumen Kerja</button>
-          </div>
+
+          ${
+            ws.docView === "files"
+              ? `
+            <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+              <div class="rubric-item" style="min-width:130px;text-align:center;">📁 <strong>Project_X</strong></div>
+              <div class="rubric-item" style="min-width:130px;text-align:center;">📁 <strong>Policy_Docs</strong></div>
+              <div class="rubric-item" style="min-width:130px;text-align:center;">📁 <strong>Reports</strong></div>
+            </div>
+
+            <table class="data-table">
+              <thead><tr><th>File Name</th><th>Date Created</th><th>Owner</th><th>Location</th><th>Aksi</th></tr></thead>
+              <tbody>
+                ${files
+                  .map(
+                    (f, fi) => `
+                  <tr style="background:${ws.openedFileIdx === fi ? "#eff6ff" : "#fff"};">
+                    <td><strong>📄 ${f.name}</strong></td>
+                    <td>${f.date}</td>
+                    <td>${f.owner}</td>
+                    <td>📁 ${f.loc}</td>
+                    <td><button class="btn btn-outline-dark btn-sm" data-open-file="${fi}">Baca</button></td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+
+            <div class="memo-box" style="margin-top:14px;border-left-color:var(--emerald);background:#f0fdf4;">
+              <h4>Pratinjau Dokumen: ${opened.name}</h4>
+              <p>${opened.content}</p>
+            </div>
+          `
+              : `
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div>
+                <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">1. Ringkasan Eksekutif &amp; Keputusan Utama</label>
+                <textarea class="textarea-box" id="docExecInput" style="min-height:85px;" placeholder="Ringkasan keputusan strategis/manajerial Anda...">${ws.docExecSummary}</textarea>
+              </div>
+              <div>
+                <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">2. Analisa Data, Rasio, &amp; Risiko</label>
+                <textarea class="textarea-box" id="docAnalInput" style="min-height:95px;" placeholder="Analisa angka portofolio, SLA, atau kepatuhan...">${ws.docAnalysis}</textarea>
+              </div>
+              <div>
+                <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">3. Rencana Aksi &amp; Mitigasi (PIC &amp; Timeline)</label>
+                <textarea class="textarea-box" id="docPlanInput" style="min-height:95px;" placeholder="Langkah implementasi, target waktu, dan kontrol...">${ws.docActionPlan}</textarea>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+              <button class="btn btn-primary btn-sm" id="btnSaveDoc">Simpan Dokumen Kerja</button>
+            </div>
+          `
+          }
         `;
       }
       return "";
@@ -525,7 +750,7 @@
 
     function saveDrafts() {
       const em = document.getElementById("emailReplyInput");
-      if (em) ws.emailReply = em.value;
+      if (em) ws.emailReplies[ws.selectedEmail] = em.value;
       const cl = document.getElementById("callRespInput");
       if (cl) ws.callResponse = cl.value;
       const d1 = document.getElementById("docExecInput");
@@ -553,19 +778,31 @@
         });
       });
 
+      const bInbox = document.getElementById("btnTabInbox");
+      if (bInbox) bInbox.addEventListener("click", () => { ws.emailTab = "inbox"; draw(); });
+      const bDraft = document.getElementById("btnTabDraft");
+      if (bDraft) bDraft.addEventListener("click", () => { ws.emailTab = "draft"; draw(); });
+
       const btnSendEmail = document.getElementById("btnSendEmail");
       if (btnSendEmail) {
         btnSendEmail.addEventListener("click", () => {
           saveDrafts();
-          if (ws.emailReply.trim().length < 20) {
+          if ((ws.emailReplies[ws.selectedEmail] || "").trim().length < 20) {
             alert("Mohon tulis balasan email minimal 20 karakter.");
             return;
           }
-          ws.emailSent = true;
+          ws.emailSentMap[ws.selectedEmail] = true;
           scheduleIncomingCall(3000, 12000);
           draw();
         });
       }
+
+      document.querySelectorAll("[data-contact-idx]").forEach((el) => {
+        el.addEventListener("click", () => {
+          ws.activeContact = Number(el.getAttribute("data-contact-idx"));
+          draw();
+        });
+      });
 
       const btnChat = document.getElementById("btnSendChat");
       if (btnChat) {
@@ -573,24 +810,26 @@
           const inp = document.getElementById("chatInput");
           const txt = inp.value.trim();
           if (!txt) return;
-          ws.chatMessages.push({ sender: "Anda", role: "user", text: txt });
-          ws.chatTurn++;
+          const curC = ws.contacts[ws.activeContact];
+          curC.messages.push({ sender: "Anda", role: "user", text: txt });
+          curC.turn++;
           const lower = txt.toLowerCase();
           let aiReply = "";
-          if (ws.chatTurn === 1) {
-            aiReply = item.chat.followUp;
-          } else if (ws.chatTurn === 2) {
-            if (/(tolak|tunda|pending|tidak bisa|audit|sop|wajib)/.test(lower)) {
-              aiReply = "Saya mengerti prinsip tata kelola yang Anda pegang. Namun apa komitmen waktu atau solusi alternatif konkret yang bisa Anda tawarkan agar hubungan kerja sama tetap berjalan?";
-            } else if (/(setuju|oke|lanjut|langsung|cairkan)/.test(lower) && !/(syarat|audit|escrow|jaminan|verifikasi)/.test(lower)) {
-              aiReply = "Baik, berarti Anda menyetujui tanpa syarat tambahan ya? Bagaimana Anda mempertanggungjawabkannya jika nanti ada temuan audit internal?";
-            } else {
-              aiReply = "Opsi bersyarat dan solusi kolaboratif yang Anda ajukan cukup masuk akal. Pastikan detail mekanisme dan PIC-nya Anda tuangkan di Email/Documents ya.";
-            }
+          if (ws.activeContact === 0) {
+            if (curC.turn === 1) aiReply = item.chat.followUp;
+            else if (curC.turn === 2) {
+              if (/(tolak|tunda|pending|tidak bisa|audit|sop|wajib)/.test(lower)) {
+                aiReply = "Saya mengerti prinsip tata kelola yang Anda pegang. Namun apa komitmen waktu atau solusi alternatif konkret yang bisa Anda tawarkan?";
+              } else if (/(setuju|oke|lanjut|langsung|cairkan)/.test(lower) && !/(syarat|audit|escrow|jaminan|verifikasi)/.test(lower)) {
+                aiReply = "Baik, berarti Anda menyetujui tanpa syarat tambahan ya? Bagaimana pertanggungjawabannya jika nanti ada temuan audit?";
+              } else {
+                aiReply = "Opsi bersyarat dan solusi kolaboratif Anda cukup masuk akal. Pastikan detailnya Anda tuangkan di Email/Documents ya.";
+              }
+            } else aiReply = "Terima kasih. Seluruh poin diskusi Anda sudah kami catat.";
           } else {
-            aiReply = "Terima kasih. Seluruh poin negosiasi dan komitmen Anda sudah terekam dalam log diskusi.";
+            aiReply = "Siap Pak/Bu, arahan prioritas Anda sudah kami terima dan segera kami jalankan bersama tim.";
           }
-          ws.chatMessages.push({ sender: item.chat.partnerName, role: "ai", text: aiReply });
+          curC.messages.push({ sender: curC.name, role: "ai", text: aiReply });
           draw();
         };
         btnChat.addEventListener("click", send);
@@ -615,18 +854,13 @@
               clearInterval(callDurationInterval);
               callDurationInterval = null;
             }
-            if (ws.callResponse.trim().length >= 20 && !ws.callAiProbe) {
-              ws.callAiProbe = "Baik, arahan Anda sudah jelas dan akan segera kami eksekusi sesuai koridor SOP dan target SLA.";
-            }
             draw();
           }
         });
       }
 
       const selfCamEl = document.getElementById("callSelfCam");
-      if (selfCamEl && callCamStream) {
-        selfCamEl.srcObject = callCamStream;
-      }
+      if (selfCamEl && callCamStream) selfCamEl.srcObject = callCamStream;
 
       const btnCam = document.getElementById("btnToggleCallCam");
       if (btnCam) {
@@ -651,30 +885,28 @@
       if (btnSendCallReply) {
         btnSendCallReply.addEventListener("click", () => {
           saveDrafts();
-          if (ws.callResponse.trim().length < 15) {
+          const txt = ws.callResponse.trim();
+          if (txt.length < 15) {
             alert("Mohon sampaikan arahan atau respon Anda minimal 15 karakter.");
             return;
           }
-          const lower = ws.callResponse.toLowerCase();
-          ws.callAiProbe = /(prioritas|coaching|sop|sla|audit|mitigasi|target|pic)/.test(lower)
+          ws.callTranscript.push({ speaker: "Anda", text: txt });
+          const lower = txt.toLowerCase();
+          const reply = /(prioritas|coaching|sop|sla|audit|mitigasi|target|pic)/.test(lower)
             ? "Baik, arahan Anda sangat jelas. Saya akan langsung jalankan sesuai prioritas dan melaporkan progresnya sore ini."
             : "Baik saya catat, namun mohon pastikan juga pembagian prioritas dan batas waktunya agar tim kami tidak ragu saat eksekusi.";
+          ws.callTranscript.push({ speaker: item.call.partnerName, text: reply });
+          ws.callResponse = "";
           draw();
-          speakIndonesian(ws.callAiProbe);
+          speakIndonesian(reply);
         });
       }
 
       const btnReplay = document.getElementById("btnReplayVoice");
-      if (btnReplay) {
-        btnReplay.addEventListener("click", () => speakIndonesian(item.call.prompt));
-      }
+      if (btnReplay) btnReplay.addEventListener("click", () => speakIndonesian(item.call.prompt));
 
       const voiceSel = document.getElementById("voiceSelect");
-      if (voiceSel) {
-        voiceSel.addEventListener("change", (e) => {
-          selectedVoiceName = e.target.value;
-        });
-      }
+      if (voiceSel) voiceSel.addEventListener("change", (e) => { selectedVoiceName = e.target.value; });
 
       const btnVoice = document.getElementById("btnVoiceDictate");
       if (btnVoice) {
@@ -694,6 +926,18 @@
           rec.start();
         });
       }
+
+      const bDocF = document.getElementById("btnDocFiles");
+      if (bDocF) bDocF.addEventListener("click", () => { saveDrafts(); ws.docView = "files"; draw(); });
+      const bDocE = document.getElementById("btnDocEditor");
+      if (bDocE) bDocE.addEventListener("click", () => { saveDrafts(); ws.docView = "editor"; draw(); });
+
+      document.querySelectorAll("[data-open-file]").forEach((b) => {
+        b.addEventListener("click", () => {
+          ws.openedFileIdx = Number(b.getAttribute("data-open-file"));
+          draw();
+        });
+      });
 
       const btnSaveDoc = document.getElementById("btnSaveDoc");
       if (btnSaveDoc) {
@@ -720,7 +964,7 @@
         if (!q) return;
         ws.aiChat.push({ role: "user", text: q });
         const ql = q.toLowerCase();
-        let ans = `Berdasarkan konteks "${item.title}", pastikan keputusan Anda menyeimbangkan prinsip kehati-hatian (SOP/risiko), SLA layanan mitra, dan solusi terukur di dokumen kerja.`;
+        let ans = `Berdasarkan konteks "${item.title}", pastikan Anda merespon seluruh Email & Chat, mengangkat Call, serta menyusun analisa data pada Documents.`;
         const hit = item.aiHints.find((h) => ql.includes("hitung") || ql.includes("rasio") || ql.includes("solusi") || ql.includes("syarat"));
         if (hit) ans = hit.a;
         ws.aiChat.push({ role: "ai", text: ans });
@@ -733,10 +977,7 @@
 
       document.getElementById("btnFinishPortrai").addEventListener("click", () => {
         saveDrafts();
-        if (!ws.emailReply && !ws.callResponse && !ws.docAnalysis && !ws.docExecSummary) {
-          alert("Mohon isi minimal beberapa modul kerja (Email / Chat / Call / Docs) sebelum evaluasi.");
-          return;
-        }
+        if (!confirm("Apakah Anda yakin ingin menyelesaikan sesi Assessment ini? Pastikan seluruh Email, Chat, Call, dan Documents sudah ditangani.")) return;
         clearTimer();
         activeMod = "eval";
         draw();
@@ -744,20 +985,22 @@
     }
 
     function renderEval(item) {
-      const userChatTxt = ws.chatMessages.filter((m) => m.role === "user").map((m) => m.text).join(" ");
+      const emailTxt = `${ws.emailReplies[0] || ""} ${ws.emailReplies[1] || ""}`;
+      const chatTxt = ws.contacts.flatMap((c) => c.messages.filter((m) => m.role === "user").map((m) => m.text)).join(" ");
+      const callTxt = ws.callTranscript.filter((t) => t.speaker === "Anda").map((t) => t.text).join(" ") + " " + ws.callResponse;
       const docCombined = `${ws.docExecSummary} ${ws.docAnalysis} ${ws.docActionPlan}`;
-      const combined = `${ws.emailReply} ${userChatTxt} ${ws.callResponse} ${docCombined}`.toLowerCase();
+      const combined = `${emailTxt} ${chatTxt} ${callTxt} ${docCombined}`.toLowerCase();
       const matched = item.keywords.filter((k) => combined.includes(k));
-      const modulesCompleted = [ws.emailReply, userChatTxt, ws.callResponse, docCombined].filter((x) => x.trim().length >= 20).length;
+      const modulesCompleted = [emailTxt, chatTxt, callTxt, docCombined].filter((x) => x.trim().length >= 20).length;
       const score = Math.min(98, Math.max(45, Math.round((matched.length / 7) * 55 + modulesCompleted * 10 + 5)));
 
       if (!state.flowResults.potrai) state.flowResults.potrai = [];
       state.flowResults.potrai[idx] = score;
 
       const trails = [
-        { name: "Operational Decision (Email)", ok: ws.emailReply.trim().length >= 20 },
-        { name: "Stakeholder Role-Play (Chat AI)", ok: ws.chatMessages.filter((m) => m.role === "user").length >= 2 },
-        { name: "People / Virtual Alignment (Call)", ok: ws.callResponse.trim().length >= 20 },
+        { name: "Operational Decision (Email)", ok: emailTxt.trim().length >= 20 },
+        { name: "Stakeholder Role-Play (Chat AI)", ok: chatTxt.trim().length >= 20 },
+        { name: "Live Virtual Meeting (Call)", ok: callTxt.trim().length >= 20 },
         { name: "Business Analysis (Documents)", ok: docCombined.trim().length >= 25 }
       ];
 
@@ -765,7 +1008,7 @@
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi PortrAI Virtual Office — Behavioral Trails (${modulesCompleted}/4 Modul Kerja)</strong>
+              <strong>Evaluasi Virtual Assessment Center — Behavioral Trails (${modulesCompleted}/4 Modul Kerja)</strong>
               <div style="font-size:13px;color:var(--text-muted);">Indikator perilaku &amp; konsep kunci terpenuhi: ${matched.length} poin</div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
@@ -776,7 +1019,7 @@
           <div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>
         </div>
         <div class="rubric-grid">
-          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kompetensi DDI Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
+          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kompetensi IFG Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
         </div>
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
           <h4>Benchmark Jawaban Ideal (${gradeId})</h4>
@@ -784,17 +1027,12 @@
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextPortrai">
-            ${idx + 1 < pool.length ? "Skenario Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+            ${idx + 1 < pool.length ? "Skenario Berikutnya" : state.fullFlow ? "Lanjut ke Laporan Akhir" : "Lihat Ringkasan Hasil"}
           </button>
         </div>
       `;
     }
 
-    startTimer(pool[0].durationSec, "portraiTimer", () => {
-      activeMod = "eval";
-      draw();
-    });
-    scheduleIncomingCall(12000, 45000);
     draw();
   };
 })();
