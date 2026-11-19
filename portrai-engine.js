@@ -421,10 +421,11 @@
       // SLIDE 2 & 9: HOME DASHBOARD (Message from the Executives + Notification Center)
       if (activeMod === "home") {
         const uname = state.currentUser ? state.currentUser.full_name : "Peserta";
+        const simRole = gradeId === "BOD-3" ? "GM of Earth Manufacturing" : "AVP of Earth Operation";
         return `
           <div style="margin-bottom:16px;">
             <div style="font-size:13px;color:var(--text-muted);font-weight:600;">Hi ${uname}</div>
-            <h2 style="font-size:22px;color:var(--primary);font-weight:800;">Welcome, ${data.roleLabel}</h2>
+            <h2 style="font-size:22px;color:var(--primary);font-weight:800;">Welcome, ${simRole}</h2>
           </div>
 
           <div class="grid-2" style="grid-template-columns:1.25fr 0.85fr;align-items:start;">
@@ -998,11 +999,21 @@
       state.flowResults.potrai[idx] = score;
 
       const trails = [
-        { name: "Operational Decision (Email)", ok: emailTxt.trim().length >= 20 },
-        { name: "Stakeholder Role-Play (Chat AI)", ok: chatTxt.trim().length >= 20 },
-        { name: "Live Virtual Meeting (Call)", ok: callTxt.trim().length >= 20 },
-        { name: "Business Analysis (Documents)", ok: docCombined.trim().length >= 25 }
+        { name: "Decision Making & Analysis (Email)", ok: emailTxt.trim().length >= 25, tip: "Balas seluruh email masuk dengan keputusan tegas, alasan berbasis data, dan langkah mitigasi." },
+        { name: "Customer Orientation & Partnerships (Chat AI)", ok: chatTxt.trim().length >= 25, tip: "Respon seluruh kontak chat (stakeholder & tim internal) minimal 2 kali dengan solusi win-win dan empatik." },
+        { name: "Coaching & Inspiring Others (Call)", ok: callTxt.trim().length >= 20, tip: "Aktifkan Call dan berikan arahan lisan yang jelas mencakup prioritas, pembagian peran, serta batas waktu." },
+        { name: "Planning, Organizing & Work Standards (Docs)", ok: docCombined.trim().length >= 30, tip: "Lengkapi 3 bagian Dokumen Kerja (Ringkasan Eksekutif, Analisa Data/Risiko, dan Rencana Aksi + PIC/Timeline)." }
       ];
+
+      const strengths = trails.filter((t) => t.ok);
+      const improvements = trails.filter((t) => !t.ok);
+      const hasMetrics = /\d+/.test(combined);
+      if (!hasMetrics) {
+        improvements.push({
+          name: gradeId === "BOD-3" ? "Business Acumen & Driving for Results" : "Business Awareness & Analysis & Judgment",
+          tip: "Sertakan angka/data kuantitatif dari dokumen (rupiah, persentase, margin, atau target hari SLA) dalam alasan keputusan Anda."
+        });
+      }
 
       return `
         <div class="feedback-box">
@@ -1018,8 +1029,33 @@
           </div>
           <div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>
         </div>
+
+        <div class="grid-2" style="margin-top:14px;">
+          <div class="feedback-box info" style="margin-top:0;">
+            <strong>✅ Kekuatan yang Terlihat (${gradeId}):</strong>
+            <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;">
+              ${
+                strengths.length > 0
+                  ? strengths.map((s) => `<li><strong>${s.name}</strong> — Bukti perilaku sudah muncul dengan baik.</li>`).join("")
+                  : `<li>Anda telah mencoba menavigasi ruang kerja virtual; tingkatkan kedalaman respon pada setiap modul.</li>`
+              }
+            </ul>
+          </div>
+
+          <div class="feedback-box warn" style="margin-top:0;">
+            <strong>🛠️ Feedback &amp; Perbaikan yang Mesti Dilakukan:</strong>
+            <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;">
+              ${
+                improvements.length > 0
+                  ? improvements.map((im) => `<li><strong>${im.name}:</strong> ${im.tip}</li>`).join("")
+                  : `<li>Seluruh 4 modul kerja &amp; analisa angka sudah terpenuhi! Pertajam lagi komunikasi persuasif dan struktur rencana aksi agar mencapai skor maksimal.</li>`
+              }
+            </ul>
+          </div>
+        </div>
+
         <div class="rubric-grid">
-          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kompetensi IFG Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
+          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kompetensi ${gradeId} Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
         </div>
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
           <h4>Benchmark Jawaban Ideal (${gradeId})</h4>

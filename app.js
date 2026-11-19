@@ -14,7 +14,7 @@
   };
 
   const UNIT_OPTIONS = [
-    { value: "Umum (Generik PortrAI)", label: "Umum / Generik PortrAI (Non-Asuransi)" },
+    { value: "Umum (Generik PortrAI)", label: "Standar PortrAI — Perusahaan Fiktif (Non-Asuransi)" },
     { value: "Branch Manager", label: "Branch Manager" },
     { value: "Technical Head", label: "Technical Head (Underwriting & Klaim)" },
     { value: "Underwriting", label: "Underwriting" },
@@ -62,7 +62,7 @@
     view: "home",
     currentUser: loadSession(),
     selectedGrade: "BOD-4",
-    unitFilter: "Semua",
+    unitFilter: "Umum (Generik PortrAI)",
     examMode: "quick", // quick | full
     preAssessment: { personalityDone: false, capDone: false, focusArea: null },
     participantName: "",
@@ -78,7 +78,7 @@
 
   if (state.currentUser) {
     state.selectedGrade = state.currentUser.grade || "BOD-4";
-    state.unitFilter = state.currentUser.unit || "Semua";
+    state.unitFilter = "Umum (Generik PortrAI)";
     state.participantName = state.currentUser.full_name || "";
     state.participantNip = state.currentUser.nip || "";
   }
@@ -329,7 +329,7 @@
           }
           state.currentUser = res.user;
           state.selectedGrade = res.user.grade || "BOD-4";
-          state.unitFilter = res.user.unit || "Semua";
+          state.unitFilter = "Umum (Generik PortrAI)";
           state.participantName = res.user.full_name;
           state.participantNip = res.user.nip;
           localStorage.setItem("askrindo_session_v1", JSON.stringify(res.user));
@@ -1912,14 +1912,24 @@
             </ul>
 
             <div class="feedback-box info">
-              <strong>Rekomendasi Persiapan (${state.selectedGrade}):</strong>
-              <p style="margin-top:6px;">
+              <strong>✅ Ringkasan Evaluasi &amp; Saran Perbaikan (${state.selectedGrade}):</strong>
+              <ul style="margin-left:18px;margin-top:8px;font-size:13.5px;line-height:1.65;">
                 ${
-                  totalAvg >= 80
-                    ? "Kesiapan Anda sangat baik. Pertahankan ketajaman bukti perilaku STAR pada CAP dan keseimbangan Risk Governance vs Bisnis pada PotrAI/Case Study."
-                    : "Perkuat penggunaan metode STAR dengan angka pencapaian konkret pada CAP, dan pastikan seluruh modul kerja pada PotrAI (Email, Chat, Call, Documents) terisi konsisten."
+                  scores.map((s) =>
+                    s.score >= 80
+                      ? `<li><strong>${s.label} (${s.score}/100):</strong> Sudah sangat baik (<em>Ready Now</em>). Pertahankan konsistensi keputusan berbasis data dan kolaborasi lintas unit.</li>`
+                      : `<li><strong>${s.label} (${s.score}/100) — Perlu Ditingkatkan:</strong> ${
+                          s.label.includes("PortrAI") || s.label.includes("Case Study")
+                            ? "Pastikan seluruh Email & Chat terjawab tuntas, angkat Call dengan arahan jelas, dan sertakan angka/timeline konkret di Dokumen Analisa."
+                            : s.label.includes("CAP")
+                            ? "Gunakan struktur pengalaman konkret (Situasi, Peran, Tindakan pribadi dengan kata 'Saya', dan Hasil berupa angka terukur)."
+                            : s.label.includes("Personality")
+                            ? "Perhatikan area prioritas observasi (" + (state.preAssessment.focusArea || "konsistensi perilaku") + ") agar selaras dengan tuntutan kompetensi " + state.selectedGrade + "."
+                            : "Tingkatkan ketelitian membaca angka, logika deduktif, dan kecepatan manajemen waktu."
+                        }</li>`
+                  ).join("")
                 }
-              </p>
+              </ul>
             </div>
           </div>
 
