@@ -55,42 +55,72 @@ body {
   flex-direction: column;
 }
 
-/* Topbar Tema Corporate Navy SATU */
+/* Topbar Modern Floating Glassmorphism + Vibrant Gradient Accent */
 .topbar {
-  background: linear-gradient(95deg, #001B2E 0%, #002B49 52%, #0A3D62 100%);
-  color: #fff;
-  padding: 14px 32px;
+  position: sticky;
+  top: 12px;
+  z-index: 50;
+  max-width: 1156px;
+  width: calc(100% - 32px);
+  margin: 14px auto 0;
+  padding: 12px 22px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid rgba(243, 112, 33, 0.55);
-  box-shadow: 0 8px 28px rgba(0, 27, 46, 0.25);
-  position: sticky;
+  gap: 14px;
+  color: var(--text);
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.92) 0%, rgba(240, 249, 255, 0.9) 55%, rgba(255, 247, 237, 0.9) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 12px 32px -10px rgba(0, 119, 182, 0.16),
+    0 4px 12px -4px rgba(243, 112, 33, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.topbar::before {
+  content: "";
+  position: absolute;
   top: 0;
-  z-index: 50;
-  backdrop-filter: blur(16px);
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  background: linear-gradient(90deg, #0077B6 0%, #06B6D4 32%, #F37021 72%, #FFB100 100%);
+}
+
+.topbar:hover {
+  box-shadow:
+    0 16px 38px -10px rgba(0, 119, 182, 0.22),
+    0 6px 16px -4px rgba(243, 112, 33, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   cursor: pointer;
   transition: transform 0.2s ease;
 }
 
 .brand:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
 }
 
 .brand-logo-img {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 65%, #ffedd5 100%);
+  border: 1px solid rgba(0, 119, 182, 0.16);
   border-radius: 14px;
   padding: 5px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px -4px rgba(0, 119, 182, 0.2);
 }
 
 .brand-logo {
@@ -110,16 +140,17 @@ body {
 .brand-title {
   font-weight: 800;
   font-size: 17px;
-  letter-spacing: -0.3px;
-  background: linear-gradient(90deg, #ffffff 0%, #e0f2fe 100%);
+  letter-spacing: -0.35px;
+  background: linear-gradient(95deg, #002B49 0%, #0077B6 55%, #F37021 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .brand-sub {
   font-size: 12px;
-  color: #93c5fd;
-  font-weight: 500;
+  color: #475569;
+  font-weight: 600;
+  letter-spacing: 0.1px;
 }
 
 .topbar-actions {
@@ -127,6 +158,58 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.topbar .btn-outline {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.topbar .btn-outline:hover {
+  background: #f0f9ff;
+  border-color: #0077B6;
+  color: #0077B6;
+  transform: translateY(-1px);
+}
+
+.topbar #btnLogout:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.topbar .btn-ghost {
+  background: rgba(0, 119, 182, 0.09);
+  color: #005b8f;
+  border: 1px solid rgba(0, 119, 182, 0.16);
+}
+
+.topbar .btn-ghost:hover {
+  background: rgba(0, 119, 182, 0.16);
+  color: #002B49;
+  transform: translateY(-1px);
+}
+
+.topbar-user-pill {
+  background: linear-gradient(135deg, #e0f2fe 0%, #eff6ff 100%) !important;
+  color: #002B49 !important;
+  border: 1px solid #bae6fd;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    top: 6px;
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Main Container */

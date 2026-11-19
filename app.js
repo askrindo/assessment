@@ -112,14 +112,16 @@
     state.supaMessage = res.reason || "";
     if (badge) {
       if (res.ok) {
-        badge.textContent = "Server: Terhubung";
-        badge.style.background = "#059669";
-        badge.style.color = "#fff";
+        badge.textContent = "● Server: Terhubung";
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#047857";
+        badge.style.border = "1px solid #86efac";
       } else {
-        badge.textContent = "Mode: Lokal";
+        badge.textContent = "● Mode: Lokal";
         badge.title = res.reason || "Server database belum siap";
-        badge.style.background = "#d97706";
-        badge.style.color = "#fff";
+        badge.style.background = "#fef3c7";
+        badge.style.color = "#b45309";
+        badge.style.border = "1px solid #fcd34d";
       }
     }
   }
