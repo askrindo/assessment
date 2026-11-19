@@ -1272,10 +1272,14 @@
           <div class="assess-header">
             <div>
               <span class="grade-badge">${data.title} • PRE-ASSESSMENT | CAP</span>
-              <h2 style="font-size:20px;color:var(--primary);">Career Achievement Portfolio — ${item.competency}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Pertanyaan ${idx + 1} dari ${items.length}</div>
+              <h2 style="font-size:20px;color:var(--primary);">Career Achievement Portofolio — ${item.competency}</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Jawablah dengan contoh pengalaman kerja berdasarkan gambaran situasi, tindakan yang Anda lakukan saat itu, beserta hasilnya.</div>
             </div>
-            <div class="timer-pill" id="capTimer">30:00</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">📶 Connection: ${navigator.onLine ? "normal" : "terputus"}</span>
+              <span class="pill" style="background:#f1f5f9;color:var(--primary);">${idx + (evaluated ? 1 : 0)} of ${items.length} Questions</span>
+              <div class="timer-pill" id="capTimer">30:00</div>
+            </div>
           </div>
 
           <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
