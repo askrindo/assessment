@@ -177,73 +177,133 @@
 
     function draw() {
       root.innerHTML = `
-        <div class="card" style="max-width:480px;margin:30px auto;">
-          <div style="text-align:center;margin-bottom:20px;">
-            <img src="ASKRINDO Assessment Logo.png" alt="Logo Assessment" style="display:block;margin:0 auto 14px;max-width:220px;width:100%;height:auto;object-fit:contain;" />
-            <span class="grade-badge">SIMETA • Simulasi Assessment Terpadu</span>
-            <h2 style="font-size:22px;color:var(--primary);margin-bottom:4px;">${mode === "login" ? "Masuk ke SIMETA" : "Daftar Akun Pegawai Baru"}</h2>
-            <p style="font-size:13px;color:var(--text-muted);">Gunakan NIP / Username Anda untuk memulai simulasi atau mengelola data pegawai.</p>
+        <div class="login-showcase">
+          <!-- Left Visual Showcase Panel -->
+          <div class="login-hero-panel">
+            <div>
+              <div class="hero-kicker">✨ AI-ENABLED ASSESSMENT CENTER</div>
+              <div class="login-hero-title">Simulasi Assessment Terpadu &amp; Interaktif</div>
+              <p class="login-hero-sub">
+                Persiapkan diri Anda menghadapi asesmen kompetensi dengan simulasi <strong>Virtual Office 5-Modul</strong>,
+                wawancara perilaku <strong>STAR</strong>, serta analitik kepribadian <strong>OCEAN &amp; Psychometric</strong>.
+              </p>
+
+              <div class="feature-bento-list">
+                <div class="feature-bento-item">
+                  <div class="feature-bento-icon">🏢</div>
+                  <div>
+                    <div style="font-weight:800;font-size:14px;">PortrAI Virtual Office &amp; Live Call</div>
+                    <div style="font-size:12.5px;color:#cbd5e1;">Simulasi Email, Chat AI adaptif, interupsi Telepon Masuk bersuara natural, &amp; Dokumen Analisa Bisnis.</div>
+                  </div>
+                </div>
+                <div class="feature-bento-item">
+                  <div class="feature-bento-icon" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);">🎯</div>
+                  <div>
+                    <div style="font-weight:800;font-size:14px;">Career Achievement Portfolio &amp; Async Video</div>
+                    <div style="font-size:12.5px;color:#cbd5e1;">Evaluasi bukti perilaku STAR serta perekaman presentasi video kamera + transkripsi suara otomatis.</div>
+                  </div>
+                </div>
+                <div class="feature-bento-item">
+                  <div class="feature-bento-icon" style="background:linear-gradient(135deg,#10b981,#059669);">📊</div>
+                  <div>
+                    <div style="font-weight:800;font-size:14px;">Radar Kompetensi &amp; Bank Soal Acak</div>
+                    <div style="font-size:12.5px;color:#cbd5e1;">Skenario spesifik unit maupun korporat umum yang diacak setiap sesi beserta laporan kesiapan instan.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:24px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.16);display:flex;justify-content:space-between;font-size:12px;color:#bae6fd;">
+              <span>SIMETA • BOD-3, BOD-4 &amp; BOD-5</span>
+              <span>KUR • Suretyship • Asuransi Umum • Generik</span>
+            </div>
           </div>
 
-          ${msg ? `<div class="feedback-box warn" style="margin-bottom:14px;margin-top:0;">${msg}</div>` : ""}
+          <!-- Right Auth Card -->
+          <div class="login-form-card">
+            <div style="text-align:center;margin-bottom:16px;">
+              <img src="ASKRINDO Assessment Logo.png" alt="Logo Assessment" style="display:block;margin:0 auto 12px;max-width:210px;width:100%;height:auto;object-fit:contain;" />
+              <span class="grade-badge">SIMETA • Simulasi Assessment Terpadu</span>
+              <h2 style="font-size:22px;color:var(--primary);margin-bottom:4px;">${mode === "login" ? "Masuk ke SIMETA" : "Registrasi Akun Pegawai"}</h2>
+              <p style="font-size:12.5px;color:var(--text-muted);">Gunakan NIP / Username Anda untuk memulai sesi simulasi.</p>
+            </div>
 
-          ${
-            mode === "login"
-              ? `
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">NIP / Username</label>
-                <input type="text" id="loginNip" class="select-input" style="width:100%;" placeholder="Contoh: 1922 atau admin" />
-              </div>
-              <div>
-                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
-                <input type="password" id="loginPw" class="select-input" style="width:100%;" placeholder="Masukkan password" />
-              </div>
-              <button class="btn btn-primary" id="btnDoLogin" style="margin-top:6px;">Masuk</button>
-              <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:6px;">
-                Belum punya akun pegawai? <a href="#" id="linkToReg" style="color:var(--primary);font-weight:700;">Daftar di sini</a>
-              </div>
+            <div class="auth-mode-tabs">
+              <button class="auth-mode-tab ${mode === "login" ? "active" : ""}" id="tabSwitchLogin">Masuk Akun</button>
+              <button class="auth-mode-tab ${mode === "register" ? "active" : ""}" id="tabSwitchReg">Daftar Baru</button>
             </div>
-          `
-              : `
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">NIP / NPP Pegawai</label>
-                <input type="text" id="regNip" class="select-input" style="width:100%;" placeholder="Contoh: 19900123" />
-              </div>
-              <div>
-                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Nama Lengkap</label>
-                <input type="text" id="regName" class="select-input" style="width:100%;" placeholder="Nama lengkap pegawai" />
-              </div>
-              <div class="grid-2" style="gap:10px;">
+
+            ${msg ? `<div class="feedback-box warn" style="margin-bottom:14px;margin-top:0;">${msg}</div>` : ""}
+
+            ${
+              mode === "login"
+                ? `
+              <div style="display:flex;flex-direction:column;gap:12px;">
                 <div>
-                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Level / Grade</label>
-                  <select id="regGrade" class="select-input" style="width:100%;min-width:0;">
-                    <option value="BOD-3">BOD-3 (Grade 15–16)</option>
-                    <option value="BOD-4" selected>BOD-4 (Grade 12–14)</option>
-                    <option value="BOD-5">BOD-5 (Grade 8–11)</option>
-                  </select>
+                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">NIP / Username</label>
+                  <input type="text" id="loginNip" class="select-input" style="width:100%;" placeholder="Masukkan NIP atau username" />
                 </div>
                 <div>
-                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Unit / Bidang</label>
-                  <select id="regUnit" class="select-input" style="width:100%;min-width:0;">
-                    ${renderUnitOptions("Underwriting", false)}
-                  </select>
+                  <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
+                  <input type="password" id="loginPw" class="select-input" style="width:100%;" placeholder="Masukkan password" />
+                </div>
+                <button class="btn btn-primary" id="btnDoLogin" style="margin-top:6px;padding:12px;">Masuk ke Portal Simulasi →</button>
+                <div style="text-align:center;font-size:12.5px;color:var(--text-muted);margin-top:4px;">
+                  Belum punya akun pegawai? <a href="#" id="linkToReg" style="color:var(--primary-light);font-weight:700;">Daftar di sini</a>
                 </div>
               </div>
-              <div>
-                <label style="font-size:13px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
-                <input type="password" id="regPw" class="select-input" style="width:100%;" placeholder="Minimal 6 karakter" />
+            `
+                : `
+              <div style="display:flex;flex-direction:column;gap:11px;">
+                <div>
+                  <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">NIP / NPP Pegawai</label>
+                  <input type="text" id="regNip" class="select-input" style="width:100%;" placeholder="Contoh: 19900123" />
+                </div>
+                <div>
+                  <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">Nama Lengkap</label>
+                  <input type="text" id="regName" class="select-input" style="width:100%;" placeholder="Nama lengkap pegawai" />
+                </div>
+                <div class="grid-2" style="gap:10px;grid-template-columns:1fr 1fr;">
+                  <div>
+                    <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">Level / Grade</label>
+                    <select id="regGrade" class="select-input" style="width:100%;min-width:0;">
+                      <option value="BOD-3">BOD-3 (Grade 15–16)</option>
+                      <option value="BOD-4" selected>BOD-4 (Grade 12–14)</option>
+                      <option value="BOD-5">BOD-5 (Grade 8–11)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">Unit / Bidang</label>
+                    <select id="regUnit" class="select-input" style="width:100%;min-width:0;">
+                      ${renderUnitOptions("Underwriting", false)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:4px;">Password</label>
+                  <input type="password" id="regPw" class="select-input" style="width:100%;" placeholder="Minimal 6 karakter" />
+                </div>
+                <button class="btn btn-emerald" id="btnDoReg" style="margin-top:6px;padding:12px;">Kirim Pendaftaran Pegawai</button>
+                <div style="text-align:center;font-size:12.5px;color:var(--text-muted);margin-top:4px;">
+                  Sudah punya akun? <a href="#" id="linkToLogin" style="color:var(--primary-light);font-weight:700;">Masuk di sini</a>
+                </div>
               </div>
-              <button class="btn btn-emerald" id="btnDoReg" style="margin-top:6px;">Daftar Akun Pegawai</button>
-              <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:6px;">
-                Sudah punya akun? <a href="#" id="linkToLogin" style="color:var(--primary);font-weight:700;">Masuk di sini</a>
-              </div>
-            </div>
-          `
-          }
+            `
+            }
+          </div>
         </div>
       `;
+
+      document.getElementById("tabSwitchLogin").addEventListener("click", () => {
+        mode = "login";
+        msg = "";
+        draw();
+      });
+      document.getElementById("tabSwitchReg").addEventListener("click", () => {
+        mode = "register";
+        msg = "";
+        draw();
+      });
 
       if (mode === "login") {
         const submitLogin = async () => {
@@ -343,17 +403,33 @@
 
     root.innerHTML = `
       <div class="card hero-card">
+        <div class="hero-kicker">🚀 SIMETA DASHBOARD • PORTAL SIMULASI KOMPETENSI</div>
         <h1>Selamat Datang, ${state.currentUser.full_name}</h1>
         <p>
-          NIP/NPP: <strong>${state.currentUser.nip}</strong> • Grade Terdaftar: <strong>${state.currentUser.grade}</strong> •
-          Unit: <strong>${state.currentUser.unit}</strong>. Pilih level di bawah untuk memulai simulasi asesmen lengkap atau latihan per metode.
+          Pilih <strong>Fokus Unit / Skenario</strong> dan <strong>Mode Waktu</strong> di bawah ini, lalu mulai simulasi lengkap 3 metode atau latihan spesifik per instrumen asesmen.
         </p>
+
+        <div class="hero-stats-strip">
+          <div class="hero-stat-pill">
+            <div class="hero-stat-label">Profil &amp; NIP Pegawai</div>
+            <div class="hero-stat-val">${state.currentUser.nip} • ${state.currentUser.grade}</div>
+          </div>
+          <div class="hero-stat-pill">
+            <div class="hero-stat-label">Unit Terdaftar</div>
+            <div class="hero-stat-val">${state.currentUser.unit}</div>
+          </div>
+          <div class="hero-stat-pill">
+            <div class="hero-stat-label">Hak Akses Simulasi</div>
+            <div class="hero-stat-val">${state.currentUser.role === "admin" || state.currentUser.allow_all_grades ? "Semua Level (BOD 3–5)" : "Khusus " + state.currentUser.grade}</div>
+          </div>
+        </div>
+
         <div class="filter-bar">
-          <label for="unitSelect">Fokus Unit / Bidang:</label>
+          <label for="unitSelect">🎯 Fokus Soal / Unit:</label>
           <select id="unitSelect" class="select-input">
             ${renderUnitOptions(state.unitFilter, true)}
           </select>
-          <label for="modeSelect">Mode Waktu:</label>
+          <label for="modeSelect">⏱️ Mode Waktu:</label>
           <select id="modeSelect" class="select-input">
             <option value="quick" ${state.examMode === "quick" ? "selected" : ""}>Latihan Cepat (Ringkas ~15–45 mnt)</option>
             <option value="full" ${state.examMode === "full" ? "selected" : ""}>Simulasi Penuh (Standar Asli 180–240 mnt)</option>
