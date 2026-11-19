@@ -2056,6 +2056,72 @@
           }
         </div>
 
+        <div class="memo-box" style="margin-top:22px;border-left-color:var(--accent);background:linear-gradient(135deg,#fffbf5 0%,#f8fafc 100%);">
+          <h3 style="font-size:16px;color:var(--primary);margin-bottom:6px;">🎯 Tips &amp; Trik Strategi Pengerjaan Asesmen yang Benar (${state.selectedGrade})</h3>
+          <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
+            Panduan praktis berikut merangkum pola perilaku yang dinilai tinggi oleh asesor pada Assessment Center resmi (DDI × IFG/BUMN):
+          </p>
+          <div class="grid-2" style="gap:12px;">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">💬 1. Chat (Pesan Singkat) — Cepat &amp; To the Point</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li><strong>Jangan dibiarkan lama tanpa balasan</strong> saat notifikasi chat masuk — respon cepat menunjukkan <em>Customer Orientation</em> &amp; <em>Driving for Results</em>.</li>
+                <li><strong>Jangan menulis terlalu panjang seperti email.</strong> Balas ringkas (2–4 kalimat), hangat, langsung sebutkan langkah tindak lanjut &amp; jam targetnya.</li>
+                <li><em>Contoh baik:</em> "Baik Bu, terima kasih infonya. Saya segera koordinasikan dengan tim Operasional sekarang dan kirim opsi penyelesaiannya via email maksimal pukul 15.00 hari ini."</li>
+              </ul>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📧 2. Email (Inbox) — Tuntas, Terstruktur &amp; Berbasis Data</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li><strong>Wajib balas seluruh email masuk</strong> sebelum waktu habis — setiap email memetakan kompetensi berbeda (bahkan yang terlihat rutin).</li>
+                <li>Prioritaskan email krisis/eskalasi terlebih dahulu, lalu gunakan struktur: <strong>Sikap/Keputusan → Dasar Data → Langkah Aksi → PIC &amp; Deadline</strong>.</li>
+                <li>Hindari membalas hanya <em>"Baik, akan saya pelajari"</em> tanpa arah solusi atau keputusan konkret.</li>
+              </ul>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📞 3. Telepon Masuk (Call) — Tenang &amp; Solutif</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li><strong>Segera angkat panggilan masuk</strong> (jangan diabaikan/ditolak) agar tidak kehilangan poin kompetensi kepemimpinan saat krisis.</li>
+                <li>Tetap tenang meski lawan bicara panik/mendesak: <strong>akui urgensi → tanyakan 1–2 fakta kunci → beri arahan sementara + komitmen follow-up</strong>.</li>
+                <li>Jangan menyalahkan divisi lain atau membuat janji di luar kewenangan jabatan Anda.</li>
+              </ul>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📄 4. Dokumen Analisa &amp; AI Assistant</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li>Susun memo/laporan eksekutif dengan pola: <strong>Ringkasan Masalah → Akar Penyebab (Angka) → Rekomendasi &amp; Mitigasi Risiko → PIC &amp; Timeline</strong>.</li>
+                <li>Gunakan <em>AI Assistant</em> untuk membantu merangkum data atau mengecek kerangka, <strong>jangan copy-paste mentah</strong> tanpa menyesuaikan angka &amp; konteks jabatan Anda.</li>
+                <li>Cek folder <em>Documents</em> sejak awal agar keputusan Anda di Email/Chat konsisten dengan data perusahaan.</li>
+              </ul>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">🧠 5. Personality Test &amp; CAP (Pre-Assessment)</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li><strong>Personality Test:</strong> Jawab spontan, jujur, dan konsisten sesuai kebiasaan kerja nyata. Jangan memanipulasi agar terlihat "sempurna" (<em>faking good</em>) karena terdeteksi oleh cek konsistensi.</li>
+                <li><strong>CAP:</strong> Gunakan pola <strong>STAR</strong> (<em>Situation–Task–Action–Result</em>) dari pengalaman nyata 2 tahun terakhir, perbanyak kata <strong>"Saya..."</strong> (bukan hanya "Kami"), dan wajib cantumkan <strong>angka dampak terukur</strong> (%, Rp, SLA).</li>
+              </ul>
+            </div>
+
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">⏱️ 6. Manajemen Waktu &amp; Peran Jabatan</div>
+              <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
+                <li><strong>Selalu berpikir sesuai level jabatan (${state.selectedGrade}):</strong> ${
+                  state.selectedGrade === "BOD-3"
+                    ? "fokus pada arah strategis lintas divisi, dampak bisnis jangka panjang, tata kelola, dan coaching pimpinan unit."
+                    : state.selectedGrade === "BOD-4"
+                    ? "fokus pada eksekusi taktis, koordinasi lintas tim, kontrol SLA/KPI, dan pembinaan anggota tim secara langsung."
+                    : "fokus pada akurasi analisis masalah, solusi operasional yang realistis, dan presentasi kamera yang terstruktur (30 dtk ringkasan, 90 dtk solusi, 60 dtk timeline)."
+                }</li>
+                <li>Sisakan <strong>10–15 menit terakhir</strong> untuk memastikan tidak ada email draft yang belum terkirim atau chat penting yang terlewat.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;">
           <button class="btn btn-outline-dark" id="btnPrintReport">Cetak / Simpan PDF</button>
           <button class="btn btn-primary" id="btnBackHome">Kembali ke Beranda</button>
