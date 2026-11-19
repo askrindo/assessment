@@ -1604,15 +1604,9 @@
       const inLeast = grp.filter((it) => map[it.id] === "least");
       const pageComplete = inMost.length === 1 && inNeutral.length === 3 && inLeast.length === 1;
 
-      const renderCard = (it, zone) => `
+      const renderCard = (it) => `
         <div class="dnd-card" draggable="true" data-drag-id="${it.id}">
           <div>${it.text}</div>
-          <div class="dnd-quick-btns">
-            ${zone !== "most" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="most">+ Paling</button>` : ""}
-            ${zone !== "neutral" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="neutral">+ Netral</button>` : ""}
-            ${zone !== "least" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="least">+ Sedikit</button>` : ""}
-            ${zone !== "pool" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="pool">↩ Kembalikan</button>` : ""}
-          </div>
         </div>
       `;
 
@@ -1622,7 +1616,7 @@
             <div>
               <span class="grade-badge ${isSample ? "amber" : ""}">${isSample ? "CONTOH PENGERJAAN (LATIHAN)" : `${data.title} • PRE-ASSESSMENT | PERSONALITY TEST`}</span>
               <h2 style="font-size:20px;color:var(--primary);">${isSample ? "Contoh Pengerjaan — Coba Pindahkan 5 Pernyataan" : `Memilih Pernyataan (Halaman ${pageIdx + 1} dari ${pages.length})`}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Geser (<em>drag &amp; drop</em>) atau klik tombol cepat pada 5 pernyataan di kiri ke 3 kotak kanan: <strong>1 Paling</strong>, <strong>3 Netral</strong>, <strong>1 Paling Sedikit</strong>.</div>
+              <div style="font-size:13px;color:var(--text-muted);">Geser (<em>drag &amp; drop</em>) 5 pernyataan di kiri ke 3 kotak kanan: <strong>1 Paling</strong>, <strong>3 Netral</strong>, <strong>1 Paling Sedikit</strong>.</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               ${connPill}
