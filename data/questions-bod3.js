@@ -18,9 +18,9 @@ window.DATA_BOD3 = {
     "Inspiring Others"
   ],
   methods: [
-    { id: "potrai", name: "PotrAI Simulation (180–240 menit)", desc: "Simulasi 5 modul terintegrasi: Email, Chat Roleplay AI, Call/Virtual Meeting, Documents (Analisa Bisnis), & AI Assistant." },
-    { id: "cap", name: "CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan terstruktur berbasis pengalaman kerja (Pencapaian, Tantangan, Tindakan, Hasil) & bukti perilaku." },
-    { id: "personality", name: "Personality Test — OCEAN (30–40 menit)", desc: "Inventori 5 dimensi OCEAN (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)." }
+    { id: "personality", name: "Pre-Assessment 1: Personality Test — OCEAN (30–40 menit)", desc: "Drag & drop 5 pernyataan per halaman ke kotak Paling Menggambarkan (1), Netral (3), & Paling Sedikit (1)." },
+    { id: "cap", name: "Pre-Assessment 2: CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan pengalaman kerja spesifik (situasi, peran, tindakan, hasil) untuk memetakan kasus simulasi." },
+    { id: "potrai", name: "Main Assessment: Simulasi PortrAI (180–240 menit)", desc: "Virtual Office 5 modul (Email, Chat AI, Call, Docs, AI Assistant) adaptif sesuai hasil Pre-Assessment." }
   ],
   potrai: [
     {
@@ -213,9 +213,9 @@ window.DATA_BOD3 = {
   cap: [
     {
       id: "bod3-cap1",
-      competency: "Business Acumen & Decision Making",
-      prompt: "Ceritakan keputusan bisnis paling strategis yang pernah Anda ambil dalam menyeimbangkan pertumbuhan kinerja/premi dengan pengendalian risiko/profitabilitas unit.",
-      indicators: ["Business Acumen (membaca dampak finansial & pasar)", "Decision Making berbasis data & alternatif terukur", "Mitigasi risiko jangka panjang", "Dampak nyata pada Loss Ratio / RBC / Laba"]
+      competency: "Decision Making & Business Acumen",
+      prompt: "Dalam melakukan tugas dan tanggung jawab pekerjaan Anda, coba tuliskan satu keputusan baik yang pernah Anda buat dan satu keputusan yang kurang baik. Apa yang Anda lakukan berbeda dalam membuat masing-masing keputusan tersebut?",
+      indicators: ["Business Acumen (membaca dampak finansial & pasar)", "Decision Making berbasis data & alternatif terukur", "Refleksi perbaikan dari keputusan kurang baik", "Dampak nyata pada kinerja unit/perusahaan"]
     },
     {
       id: "bod3-cap2",

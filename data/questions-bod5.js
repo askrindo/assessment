@@ -14,9 +14,9 @@ window.DATA_BOD5 = {
     "Integrity & AKHLAK BUMN"
   ],
   methods: [
-    { id: "casestudy", name: "Case Study + Async Presentation (190 menit)", desc: "Menjawab pertanyaan studi kasus secara tertulis, lalu menyampaikan analisis & rekomendasi melalui presentasi rekaman mandiri." },
-    { id: "cap", name: "CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan terstruktur berbasis pengalaman kerja (Pencapaian, Tantangan, Tindakan, Hasil) level operasional/officer." },
-    { id: "psychometric", name: "Psychometric Test (120 menit)", desc: "Mengukur 3 aspek: Kemampuan Berpikir (kognitif), Karakteristik Kepribadian, dan Faktor Motivasi kerja." }
+    { id: "psychometric", name: "Pre-Assessment 1: Psychometric Test (120 menit)", desc: "Mengukur 3 aspek: Kemampuan Berpikir (kognitif), Karakteristik Kepribadian, dan Faktor Motivasi kerja." },
+    { id: "cap", name: "Pre-Assessment 2: CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan pengalaman kerja spesifik (situasi, peran, tindakan, hasil) level operasional/officer." },
+    { id: "casestudy", name: "Main Assessment: Case Study + Async Presentation (190 menit)", desc: "Menjawab studi kasus tertulis lalu menyampaikan analisis & rekomendasi lewat rekaman video mandiri." }
   ],
   casestudy: [
     {

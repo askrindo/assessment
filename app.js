@@ -64,6 +64,7 @@
     selectedGrade: "BOD-4",
     unitFilter: "Semua",
     examMode: "quick", // quick | full
+    preAssessment: { personalityDone: false, capDone: false, focusArea: null },
     participantName: "",
     participantNip: "",
     supaConnected: false,
@@ -551,6 +552,19 @@
     if (!isGradeAllowed(gradeId)) {
       alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
       return;
+    }
+    if (
+      !state.fullFlow &&
+      (methodId === "potrai" || methodId === "casestudy") &&
+      (!state.preAssessment.personalityDone || !state.preAssessment.capDone)
+    ) {
+      const goPre = confirm(
+        "Sesuai alur resmi DDI, peserta perlu menyelesaikan Pre-Assessment (Personality/Psychometric Test & CAP) terlebih dahulu untuk menentukan fokus kasus simulasi.\n\nKlik OK untuk mulai dari Pre-Assessment sekarang, atau Cancel untuk langsung latihan simulasi."
+      );
+      if (goPre) {
+        startFullAssessment(gradeId);
+        return;
+      }
     }
     if (methodId === "potrai") renderPotrai(gradeId);
     else if (methodId === "casestudy") renderCaseStudy(gradeId);
@@ -1159,24 +1173,55 @@
     draw();
   }
 
-  // ======================== CAP — CAREER ACHIEVEMENT PORTFOLIO (STAR) ========================
+  // ======================== CAP — CAREER ACHIEVEMENT PORTFOLIO (DDI FORMAT) ========================
   function renderCapStar(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
     const items = shuffleArray(data.cap).slice(0, isFull ? 4 : 2);
+    const startTimeStr = new Date().toLocaleString("id-ID");
     let idx = 0;
-    let star = { s: "", t: "", a: "", r: "" };
+    let essayText = "";
     let evaluated = false;
+    let finishedAll = false;
     let scores = [];
 
     startTimer(isFull ? 4500 : items.length * 900, "capTimer", () => {
       state.flowResults.cap = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 65;
+      state.preAssessment.capDone = true;
       if (state.fullFlow) nextInFlow();
       else renderReport();
     });
 
     function draw() {
+      if (finishedAll) {
+        const endTimeStr = new Date().toLocaleString("id-ID");
+        root.innerHTML = `
+          <div class="card">
+            <div class="feedback-box info" style="margin-top:0;margin-bottom:20px;">
+              Jika Anda telah sampai pada halaman ini, berarti Anda telah berhasil menyelesaikan aktivitas <strong>Pre-Assessment: Career Achievement Portfolio (CAP)</strong>. Silakan klik <strong>Next →</strong> untuk melanjutkan aktivitas berikutnya.
+            </div>
+            <div class="ddi-done-card">
+              <h2 style="color:var(--primary);margin-bottom:8px;">Selesai!</h2>
+              <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;">
+                Ini adalah akhir dari pengerjaan Career Achievement Portfolio (CAP).<br/>
+                Jawaban Anda telah tersimpan dan digunakan untuk memetakan kasus Simulasi PortrAI / Case Study.
+              </p>
+              <div style="display:flex;justify-content:center;gap:36px;font-size:13px;color:var(--text);margin-bottom:24px;flex-wrap:wrap;">
+                <div><strong>Mulai:</strong><br/>${startTimeStr}</div>
+                <div><strong>Selesai:</strong><br/>${endTimeStr}</div>
+              </div>
+              <button class="btn btn-accent" id="btnCapFinalNext" style="min-width:160px;">Next →</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnCapFinalNext").addEventListener("click", () => {
+          if (state.fullFlow) nextInFlow();
+          else renderReport();
+        });
+        return;
+      }
+
       const item = items[idx];
       const pct = Math.round(((idx + (evaluated ? 1 : 0)) / items.length) * 100);
 
@@ -1184,43 +1229,34 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge">${data.title} • CAP (Career Achievement Portfolio)</span>
-              <h2 style="font-size:20px;color:var(--primary);">Kompetensi: ${item.competency}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Pertanyaan ${idx + 1} dari ${items.length} • Format terstruktur berbasis pengalaman kerja (STAR)</div>
+              <span class="grade-badge">${data.title} • PRE-ASSESSMENT | CAP</span>
+              <h2 style="font-size:20px;color:var(--primary);">Career Achievement Portfolio — ${item.competency}</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Pertanyaan ${idx + 1} dari ${items.length}</div>
             </div>
             <div class="timer-pill" id="capTimer">30:00</div>
           </div>
 
           <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
 
-          <div class="memo-box">
-            <h4>Pertanyaan Pengalaman Kerja:</h4>
-            <p>${item.prompt}</p>
+          <div class="feedback-box info" style="margin-top:0;margin-bottom:16px;font-style:italic;font-size:13.5px;">
+            <strong>Tips:</strong> Gunakan contoh pengalaman yang nyata dan relevan, serta ceritakan secara konkret apa yang terjadi, peran yang Anda jalankan, langkah yang Anda ambil, dan hasil yang berhasil dicapai. Semakin spesifik dan lengkap jawaban Anda, semakin baik gambaran yang dapat diperoleh dari pengalaman kerja Anda!
           </div>
 
           ${
             !evaluated
               ? `
-            <div class="star-grid">
-              <div class="star-field">
-                <label>1. Situation &amp; Challenge (Situasi &amp; Tantangan yang Dihadapi)</label>
-                <textarea class="textarea-box" id="starS" placeholder="Kapan/di mana terjadi, konteks KUR/Non-KUR, dan tantangan utamanya...">${star.s}</textarea>
+            <div class="cap-ddi-box">
+              <div>
+                <div style="font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;margin-bottom:6px;">Pertanyaan Pengalaman Kerja</div>
+                <p style="font-size:14.5px;font-weight:600;color:var(--primary);line-height:1.65;">${item.prompt}</p>
               </div>
-              <div class="star-field">
-                <label>2. Task (Peran &amp; Tanggung Jawab Anda)</label>
-                <textarea class="textarea-box" id="starT" placeholder="Apa target atau tanggung jawab spesifik Anda pada situasi tersebut...">${star.t}</textarea>
-              </div>
-              <div class="star-field">
-                <label>3. Action (Tindakan Nyata yang Anda Lakukan)</label>
-                <textarea class="textarea-box" id="starA" placeholder="Langkah konkret yang Anda ambil (gunakan kata 'Saya', bukan hanya 'Kami')...">${star.a}</textarea>
-              </div>
-              <div class="star-field">
-                <label>4. Result &amp; Achievement (Hasil &amp; Pencapaian Terukur)</label>
-                <textarea class="textarea-box" id="starR" placeholder="Dampak nyata (angka Loss Ratio, SLA, recovery subrogasi, atau perbaikan sistem)...">${star.r}</textarea>
+              <div>
+                <label style="font-size:12.5px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">Gunakan kolom berikut untuk menceritakan pengalaman Anda (Situasi, Peran, Tindakan, &amp; Hasil):</label>
+                <textarea class="textarea-box" id="capEssayInput" style="min-height:200px;" placeholder="Ceritakan secara konkret: situasi yang terjadi, peran Anda, tindakan nyata yang Anda lakukan ('Saya...'), serta hasil terukur yang dicapai...">${essayText}</textarea>
               </div>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-              <button class="btn btn-primary" id="btnEvalCap">Analisis Bukti Perilaku (AI Assessor)</button>
+              <button class="btn btn-primary" id="btnEvalCap">Simpan &amp; Evaluasi Jawaban</button>
             </div>
           `
               : renderCapEval(item)
@@ -1230,14 +1266,9 @@
 
       if (!evaluated) {
         document.getElementById("btnEvalCap").addEventListener("click", () => {
-          star = {
-            s: document.getElementById("starS").value.trim(),
-            t: document.getElementById("starT").value.trim(),
-            a: document.getElementById("starA").value.trim(),
-            r: document.getElementById("starR").value.trim()
-          };
-          if (!star.s || !star.a || !star.r) {
-            alert("Mohon lengkapi minimal bagian Situation, Action, dan Result agar bukti perilaku dapat dievaluasi.");
+          essayText = document.getElementById("capEssayInput").value.trim();
+          if (essayText.length < 40) {
+            alert("Mohon ceritakan pengalaman kerja Anda minimal 40 karakter (mencakup situasi, tindakan, dan hasil).");
             return;
           }
           evaluated = true;
@@ -1247,34 +1278,35 @@
         document.getElementById("btnNextCap").addEventListener("click", () => {
           if (idx + 1 < items.length) {
             idx++;
-            star = { s: "", t: "", a: "", r: "" };
+            essayText = "";
             evaluated = false;
             draw();
           } else {
             clearTimer();
             state.flowResults.cap = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-            if (state.fullFlow) nextInFlow();
-            else renderReport();
+            state.preAssessment.capDone = true;
+            finishedAll = true;
+            draw();
           }
         });
       }
     }
 
     function renderCapEval(item) {
-      const hasFirstPerson = /\bsaya\b/i.test(star.a);
-      const hasNumbers = /\d+/.test(star.r);
-      const totalWords = `${star.s} ${star.t} ${star.a} ${star.r}`.split(/\s+/).filter(Boolean).length;
-      const completeness = [star.s, star.t, star.a, star.r].filter((x) => x.length >= 20).length;
-      const score = Math.min(96, Math.max(50, completeness * 16 + (hasFirstPerson ? 12 : 4) + (hasNumbers ? 12 : 4) + (totalWords >= 80 ? 8 : 2)));
+      const hasFirstPerson = /\bsaya\b/i.test(essayText);
+      const hasNumbers = /\d+/.test(essayText);
+      const hasResultWord = /(hasil|dampak|meningkat|turun|berhasil|tercapai|efisien|solusi)/i.test(essayText);
+      const totalWords = essayText.split(/\s+/).filter(Boolean).length;
+      const score = Math.min(97, Math.max(52, (totalWords >= 70 ? 48 : totalWords >= 40 ? 36 : 24) + (hasFirstPerson ? 18 : 6) + (hasNumbers ? 16 : 6) + (hasResultWord ? 14 : 6)));
       scores[idx] = score;
 
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi Bukti Perilaku CAP (STAR)</strong>
+              <strong>Evaluasi Bukti Perilaku CAP</strong>
               <div style="font-size:13px;color:var(--text-muted);">
-                Kelengkapan STAR: ${completeness}/4 • Kepemilikan tindakan ("Saya"): ${hasFirstPerson ? "Jelas ✓" : "Perlu dipertegas"} • Hasil terukur (angka): ${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}
+                Jumlah kata: ${totalWords} • Kepemilikan tindakan ("Saya"): ${hasFirstPerson ? "Jelas ✓" : "Perlu dipertegas"} • Hasil terukur (angka): ${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}
               </div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
@@ -1286,17 +1318,17 @@
         ${
           !hasFirstPerson || !hasNumbers
             ? `<div class="feedback-box warn" style="margin-top:14px;">
-                 <strong>Probing Asesor DDI (Catatan Penguatan STAR):</strong>
+                 <strong>Catatan Probing Asesor DDI:</strong>
                  <ul style="margin-left:18px;margin-top:6px;">
-                   ${!hasFirstPerson ? "<li>Pada bagian <strong>Action</strong>, perjelas kontribusi pribadi Anda menggunakan kata <em>'Saya'</em> (bukan hanya 'kami/tim').</li>" : ""}
-                   ${!hasNumbers ? "<li>Pada bagian <strong>Result</strong>, cantumkan angka dampak terukur (persentase perbaikan, rupiah, SLA hari, atau jumlah berkas).</li>" : ""}
+                   ${!hasFirstPerson ? "<li>Perjelas kontribusi pribadi Anda menggunakan kata <em>'Saya'</em> (bukan hanya 'kami/tim').</li>" : ""}
+                   ${!hasNumbers ? "<li>Cantumkan angka dampak terukur (persentase perbaikan, rupiah, SLA hari, atau jumlah berkas).</li>" : ""}
                  </ul>
                </div>`
-            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Bukti Perilaku Lengkap:</strong> Jawaban STAR Anda sudah menunjukkan kepemilikan tindakan pribadi dan hasil terukur sesuai standar asesor DDI.</div>`
+            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Bukti Perilaku Lengkap:</strong> Jawaban Anda sudah konkret mencakup situasi, tindakan pribadi, dan hasil terukur sesuai standar DDI.</div>`
         }
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextCap">
-            ${idx + 1 < items.length ? "Pertanyaan CAP Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+            ${idx + 1 < items.length ? "Pertanyaan CAP Berikutnya →" : "Selesaikan CAP →"}
           </button>
         </div>
       `;
@@ -1305,111 +1337,243 @@
     draw();
   }
 
-  // ======================== PERSONALITY TEST — 5 DIMENSI OCEAN ========================
+  // ======================== PRE-ASSESSMENT PERSONALITY TEST — DRAG & DROP OCEAN (DDI FORMAT) ========================
   function renderOceanPersonality(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
-    const items = shuffleArray(data.personality);
-    const answers = {};
-    const labels = ["Sangat Tidak Setuju", "Tidak Setuju", "Netral", "Setuju", "Sangat Setuju"];
+    const startTimeStr = new Date().toLocaleString("id-ID");
 
-    function finishOcean() {
+    // Susun menjadi 3 halaman x 5 pernyataan (tiap halaman 1 O, 1 C, 1 E, 1 A, 1 N)
+    const byDim = { Openness: [], Conscientiousness: [], Extraversion: [], Agreeableness: [], Neuroticism: [] };
+    shuffleArray(data.personality).forEach((it) => {
+      if (byDim[it.dim]) byDim[it.dim].push(it);
+    });
+    const pages = [];
+    for (let p = 0; p < 3; p++) {
+      const group = ["Openness", "Conscientiousness", "Extraversion", "Agreeableness", "Neuroticism"]
+        .map((d) => byDim[d][p])
+        .filter(Boolean);
+      if (group.length === 5) pages.push(shuffleArray(group));
+    }
+
+    let pageIdx = 0;
+    let doneScreen = false;
+    // placements[pageIdx] = { id: 'pool' | 'most' | 'neutral' | 'least' }
+    const placements = pages.map((grp) => {
+      const map = {};
+      grp.forEach((it) => (map[it.id] = "pool"));
+      return map;
+    });
+
+    function computeOceanResults() {
       clearTimer();
       const dims = { Openness: [], Conscientiousness: [], Extraversion: [], Agreeableness: [], Neuroticism: [] };
-      items.forEach((it) => {
-        const raw = answers[it.id] || 3;
-        const val = it.reverse ? 6 - raw : raw;
-        dims[it.dim].push(val);
+      pages.forEach((grp, pi) => {
+        grp.forEach((it) => {
+          const z = placements[pi][it.id];
+          const raw = z === "most" ? 5 : z === "least" ? 1 : 3;
+          const val = it.reverse ? 6 - raw : raw;
+          dims[it.dim].push(val);
+        });
       });
       const dimScore = {};
       let total = 0;
+      let lowestDim = "Conscientiousness";
+      let lowestVal = 101;
       Object.keys(dims).forEach((d) => {
         const avg = dims[d].reduce((a, b) => a + b, 0) / dims[d].length;
-        dimScore[d === "Neuroticism" ? "Emotional Stability" : d] = Math.round((avg / 5) * 100);
-        total += Math.round((avg / 5) * 100);
+        const pct = Math.round((avg / 5) * 100);
+        const label = d === "Neuroticism" ? "Emotional Stability" : d;
+        dimScore[label] = pct;
+        total += pct;
+        if (pct < lowestVal) {
+          lowestVal = pct;
+          lowestDim = label;
+        }
       });
       state.flowResults.personality = {
         overall: Math.round(total / 5),
         dimensions: dimScore
       };
-      if (state.fullFlow) nextInFlow();
-      else renderReport();
+      state.preAssessment.personalityDone = true;
+      state.preAssessment.focusArea = lowestDim;
+      doneScreen = true;
+      draw();
     }
 
     if (isFull) {
-      startTimer(2400, "oceanTimer", finishOcean); // 40 menit standar asli
+      startTimer(2400, "oceanTimer", computeOceanResults); // 40 menit standar asli
+    }
+
+    function moveCard(itemId, targetZone) {
+      const map = placements[pageIdx];
+      const counts = { most: 0, neutral: 0, least: 0 };
+      Object.values(map).forEach((v) => {
+        if (counts[v] !== undefined) counts[v]++;
+      });
+      const limits = { most: 1, neutral: 3, least: 1 };
+      if (targetZone !== "pool" && map[itemId] !== targetZone && counts[targetZone] >= limits[targetZone]) {
+        alert(`Kotak "${targetZone === "most" ? "Paling Menggambarkan Saya" : targetZone === "neutral" ? "Netral" : "Paling Sedikit Menggambarkan Saya"}" sudah penuh (maksimal ${limits[targetZone]} pernyataan). Pindahkan dulu pernyataan lain jika ingin mengganti.`);
+        return;
+      }
+      map[itemId] = targetZone;
+      draw();
     }
 
     function draw() {
-      const answeredCount = Object.keys(answers).length;
+      if (doneScreen) {
+        const endTimeStr = new Date().toLocaleString("id-ID");
+        root.innerHTML = `
+          <div class="card">
+            <div class="feedback-box info" style="margin-top:0;margin-bottom:20px;">
+              Jika Anda telah sampai pada halaman ini, berarti Anda telah berhasil menyelesaikan aktivitas <strong>Pre-Assessment: Personality Test</strong>. Silakan klik <strong>Next →</strong> untuk melanjutkan ke aktivitas berikutnya.
+            </div>
+            <div class="ddi-done-card">
+              <h2 style="color:var(--primary);margin-bottom:8px;">Selesai!</h2>
+              <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;">
+                Ini adalah akhir dari pengerjaan aktivitas Personality Test (OCEAN).<br/>
+                Jawaban Anda telah tersimpan. Area prioritas observasi untuk simulasi: <strong>${state.preAssessment.focusArea}</strong>.
+              </p>
+              <div style="display:flex;justify-content:center;gap:36px;font-size:13px;color:var(--text);margin-bottom:24px;flex-wrap:wrap;">
+                <div><strong>Mulai:</strong><br/>${startTimeStr}</div>
+                <div><strong>Selesai:</strong><br/>${endTimeStr}</div>
+              </div>
+              <button class="btn btn-accent" id="btnOceanFinalNext" style="min-width:160px;">Next →</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnOceanFinalNext").addEventListener("click", () => {
+          if (state.fullFlow) nextInFlow();
+          else renderReport();
+        });
+        return;
+      }
+
+      const grp = pages[pageIdx];
+      const map = placements[pageIdx];
+      const inPool = grp.filter((it) => map[it.id] === "pool");
+      const inMost = grp.filter((it) => map[it.id] === "most");
+      const inNeutral = grp.filter((it) => map[it.id] === "neutral");
+      const inLeast = grp.filter((it) => map[it.id] === "least");
+      const pageComplete = inMost.length === 1 && inNeutral.length === 3 && inLeast.length === 1;
+
+      const renderCard = (it, zone) => `
+        <div class="dnd-card" draggable="true" data-drag-id="${it.id}">
+          <div>${it.text}</div>
+          <div class="dnd-quick-btns">
+            ${zone !== "most" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="most">+ Paling</button>` : ""}
+            ${zone !== "neutral" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="neutral">+ Netral</button>` : ""}
+            ${zone !== "least" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="least">+ Sedikit</button>` : ""}
+            ${zone !== "pool" ? `<button class="dnd-mini-btn" data-move="${it.id}" data-zone="pool">↩ Kembalikan</button>` : ""}
+          </div>
+        </div>
+      `;
+
       root.innerHTML = `
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge">${data.title} • Personality Test (5 Dimensi OCEAN)</span>
-              <h2 style="font-size:20px;color:var(--primary);">Inventori Kepribadian Big Five (OCEAN)</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Mengukur Openness, Conscientiousness, Extraversion, Agreeableness, dan Neuroticism (${answeredCount}/${items.length} terjawab).</div>
+              <span class="grade-badge">${data.title} • PRE-ASSESSMENT | PERSONALITY TEST</span>
+              <h2 style="font-size:20px;color:var(--primary);">Memilih Pernyataan (Halaman ${pageIdx + 1} dari ${pages.length})</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Geser (<em>drag &amp; drop</em>) atau klik tombol cepat pada 5 pernyataan di kiri ke 3 kotak kanan: <strong>1 Paling</strong>, <strong>3 Netral</strong>, <strong>1 Paling Sedikit</strong>.</div>
             </div>
             ${isFull ? `<div class="timer-pill" id="oceanTimer">40:00</div>` : ""}
           </div>
 
-          ${items
-            .map(
-              (it, idx) => `
-            <div class="likert-row">
-              <div class="likert-statement">${idx + 1}. ${it.text}</div>
-              <div class="likert-scale">
-                ${[1, 2, 3, 4, 5]
-                  .map(
-                    (val) => `
-                  <button class="likert-btn ${answers[it.id] === val ? "active" : ""}" data-pid="${it.id}" data-val="${val}">
-                    ${val} • ${labels[val - 1]}
-                  </button>
-                `
-                  )
-                  .join("")}
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${Math.round(((pageIdx + (pageComplete ? 1 : 0)) / pages.length) * 100)}%"></div></div>
+
+          <div class="dnd-layout">
+            <div class="dnd-source-box" data-dropzone="pool">
+              <div class="dnd-zone-header">
+                <span>Statement (Pernyataan Tersisa)</span>
+                <span class="pill ${inPool.length === 0 ? "pill-green" : "pill-amber"}">${inPool.length} / 5</span>
+              </div>
+              ${inPool.length === 0 ? `<div style="font-size:12.5px;color:var(--emerald-dark);font-weight:700;padding:14px 0;">✓ Semua 5 pernyataan sudah dipindahkan!</div>` : inPool.map((it) => renderCard(it, "pool")).join("")}
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div class="dnd-dropzone" data-dropzone="most">
+                <div class="dnd-zone-header">
+                  <span>Paling Menggambarkan Saya</span>
+                  <span class="pill ${inMost.length === 1 ? "pill-green" : "pill-amber"}">${inMost.length} / 1</span>
+                </div>
+                ${inMost.length === 0 ? `<div style="font-size:12px;color:var(--text-muted);">Tarik 1 pernyataan ke sini...</div>` : inMost.map((it) => renderCard(it, "most")).join("")}
+              </div>
+
+              <div class="dnd-dropzone" data-dropzone="neutral">
+                <div class="dnd-zone-header">
+                  <span>Netral</span>
+                  <span class="pill ${inNeutral.length === 3 ? "pill-green" : "pill-amber"}">${inNeutral.length} / 3</span>
+                </div>
+                ${inNeutral.length === 0 ? `<div style="font-size:12px;color:var(--text-muted);">Tarik 3 pernyataan ke sini...</div>` : inNeutral.map((it) => renderCard(it, "neutral")).join("")}
+              </div>
+
+              <div class="dnd-dropzone" data-dropzone="least">
+                <div class="dnd-zone-header">
+                  <span>Paling Sedikit Menggambarkan Saya</span>
+                  <span class="pill ${inLeast.length === 1 ? "pill-green" : "pill-amber"}">${inLeast.length} / 1</span>
+                </div>
+                ${inLeast.length === 0 ? `<div style="font-size:12px;color:var(--text-muted);">Tarik 1 pernyataan ke sini...</div>` : inLeast.map((it) => renderCard(it, "least")).join("")}
               </div>
             </div>
-          `
-            )
-            .join("")}
+          </div>
 
-          <div style="display:flex;justify-content:flex-end;margin-top:20px;">
-            <button class="btn btn-primary" id="btnFinishPers" ${answeredCount < items.length ? "disabled" : ""}>
-              Selesaikan Personality Test (OCEAN)
+          <div class="feedback-box warn" style="margin-top:16px;font-size:13px;">
+            ⚠️ Pastikan Anda <strong>telah memindahkan semua pernyataan (5 pernyataan)</strong> ke dalam kotak kanan sesuai instruksi (1 Paling, 3 Netral, 1 Paling Sedikit). Jika belum lengkap, Anda tidak dapat melanjutkan ke halaman selanjutnya.
+          </div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:16px;">
+            <button class="btn btn-outline-dark" id="btnPrevOcean" ${pageIdx === 0 ? "disabled" : ""}>← Sebelumnya</button>
+            <button class="btn btn-accent" id="btnNextOcean" ${!pageComplete ? "disabled" : ""}>
+              ${pageIdx + 1 < pages.length ? "Halaman Selanjutnya →" : "Selesaikan Personality Test →"}
             </button>
           </div>
         </div>
       `;
 
-      document.querySelectorAll("[data-pid]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          answers[btn.getAttribute("data-pid")] = Number(btn.getAttribute("data-val"));
-          draw();
+      // Drag & Drop events
+      document.querySelectorAll("[data-drag-id]").forEach((el) => {
+        el.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", el.getAttribute("data-drag-id"));
         });
       });
 
-      document.getElementById("btnFinishPers").addEventListener("click", () => {
-        const dims = { Openness: [], Conscientiousness: [], Extraversion: [], Agreeableness: [], Neuroticism: [] };
-        items.forEach((it) => {
-          const raw = answers[it.id];
-          const val = it.reverse ? 6 - raw : raw;
-          dims[it.dim].push(val);
+      document.querySelectorAll("[data-dropzone]").forEach((zoneEl) => {
+        zoneEl.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          zoneEl.classList.add("drag-over");
         });
-        const dimScore = {};
-        let total = 0;
-        Object.keys(dims).forEach((d) => {
-          const avg = dims[d].reduce((a, b) => a + b, 0) / dims[d].length;
-          dimScore[d === "Neuroticism" ? "Emotional Stability" : d] = Math.round((avg / 5) * 100);
-          total += Math.round((avg / 5) * 100);
+        zoneEl.addEventListener("dragleave", () => zoneEl.classList.remove("drag-over"));
+        zoneEl.addEventListener("drop", (e) => {
+          e.preventDefault();
+          zoneEl.classList.remove("drag-over");
+          const itemId = e.dataTransfer.getData("text/plain");
+          if (itemId) moveCard(itemId, zoneEl.getAttribute("data-dropzone"));
         });
-        state.flowResults.personality = {
-          overall: Math.round(total / 5),
-          dimensions: dimScore
-        };
-        if (state.fullFlow) nextInFlow();
-        else renderReport();
+      });
+
+      document.querySelectorAll("[data-move]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          moveCard(btn.getAttribute("data-move"), btn.getAttribute("data-zone"));
+        });
+      });
+
+      document.getElementById("btnPrevOcean").addEventListener("click", () => {
+        if (pageIdx > 0) {
+          pageIdx--;
+          draw();
+        }
+      });
+
+      document.getElementById("btnNextOcean").addEventListener("click", () => {
+        if (!pageComplete) return;
+        if (pageIdx + 1 < pages.length) {
+          pageIdx++;
+          draw();
+        } else {
+          computeOceanResults();
+        }
       });
     }
 
