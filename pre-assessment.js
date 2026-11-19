@@ -29,11 +29,30 @@
 
     let camStream = null;
     let scanInterval = null;
-    let lastScan = { brightOk: false, faceOk: false, avgLuma: 0 };
+    let lastScan = { brightOk: false, faceOk: false, faceCount: 0, avgLuma: 0, engine: "Memuat AI..." };
+    let faceModelReady = false;
+    let faceModelLoading = false;
     const offCanvas = document.createElement("canvas");
     offCanvas.width = 120;
     offCanvas.height = 90;
     const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
+
+    async function ensureFaceModel() {
+      if (faceModelReady) return true;
+      if (!window.faceapi || faceModelLoading) return false;
+      faceModelLoading = true;
+      try {
+        await window.faceapi.nets.tinyFaceDetector.loadFromUri(
+          "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/"
+        );
+        faceModelReady = true;
+      } catch {
+        faceModelReady = false;
+      } finally {
+        faceModelLoading = false;
+      }
+      return faceModelReady;
+    }
 
     function stopCam() {
       if (scanInterval) {
@@ -46,63 +65,91 @@
       }
     }
 
-    async function analyzeFrame(videoEl) {
+    function drawOverlayBoxes(overlayId, videoEl, boxes, okColor) {
+      const ov = document.getElementById(overlayId);
+      if (!ov || !videoEl || !videoEl.videoWidth) return;
+      if (ov.width !== videoEl.clientWidth || ov.height !== videoEl.clientHeight) {
+        ov.width = videoEl.clientWidth;
+        ov.height = videoEl.clientHeight;
+      }
+      const ctx = ov.getContext("2d");
+      ctx.clearRect(0, 0, ov.width, ov.height);
+      if (!boxes || boxes.length === 0) return;
+
+      const scaleX = ov.width / videoEl.videoWidth;
+      const scaleY = ov.height / videoEl.videoHeight;
+      ctx.strokeStyle = okColor ? "#10b981" : "#ef4444";
+      ctx.lineWidth = 2.5;
+      boxes.forEach((b) => {
+        ctx.strokeRect(b.x * scaleX, b.y * scaleY, b.width * scaleX, b.height * scaleY);
+      });
+    }
+
+    async function analyzeFrame(videoEl, overlayId) {
       if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0) {
-        return { brightOk: false, faceOk: false, avgLuma: 0 };
+        return { brightOk: false, faceOk: false, faceCount: 0, avgLuma: 0, engine: "Menunggu video..." };
       }
       offCtx.drawImage(videoEl, 0, 0, 120, 90);
       const data = offCtx.getImageData(0, 0, 120, 90).data;
       let sum = 0;
       let sumSq = 0;
-      let skinPixels = 0;
-      let centerPixels = 0;
       const total = 120 * 90;
-
-      for (let y = 0; y < 90; y++) {
-        for (let x = 0; x < 120; x++) {
-          const i = (y * 120 + x) * 4;
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-          sum += luma;
-          sumSq += luma * luma;
-
-          // Cek area oval tengah untuk deteksi keberadaan wajah (YCbCr skin tone)
-          if (x >= 28 && x <= 92 && y >= 12 && y <= 82) {
-            centerPixels++;
-            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-            if (luma > 40 && cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173) {
-              skinPixels++;
-            }
-          }
-        }
+      for (let i = 0; i < data.length; i += 4) {
+        const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        sum += luma;
+        sumSq += luma * luma;
       }
-
       const avgLuma = sum / total;
       const variance = sumSq / total - avgLuma * avgLuma;
-      const brightOk = avgLuma >= 35 && variance >= 90;
-      let faceOk = brightOk && skinPixels / centerPixels >= 0.06;
+      const brightOk = avgLuma >= 35 && variance >= 85;
 
-      // Gunakan FaceDetector bawaan browser jika tersedia
-      if (brightOk && "FaceDetector" in window) {
+      if (!brightOk) {
+        drawOverlayBoxes(overlayId, videoEl, [], false);
+        return { brightOk: false, faceOk: false, faceCount: 0, avgLuma: Math.round(avgLuma), engine: "AI Face" };
+      }
+
+      // 1. Prioritas utama: AI TinyFaceDetector (face-api)
+      if (!faceModelReady && window.faceapi) {
+        await ensureFaceModel();
+      }
+      if (faceModelReady && window.faceapi) {
         try {
-          const fd = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 2 });
-          const faces = await fd.detect(videoEl);
-          faceOk = faces.length === 1;
+          const dets = await window.faceapi.detectAllFaces(
+            videoEl,
+            new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 })
+          );
+          const boxes = dets.map((d) => d.box);
+          const faceCount = boxes.length;
+          const faceOk = faceCount === 1;
+          drawOverlayBoxes(overlayId, videoEl, boxes, faceOk);
+          return { brightOk: true, faceOk, faceCount, avgLuma: Math.round(avgLuma), engine: "AI TinyFaceDetector" };
         } catch {}
       }
 
-      return { brightOk, faceOk, avgLuma: Math.round(avgLuma) };
+      // 2. Fallback: Native FaceDetector API browser
+      if ("FaceDetector" in window) {
+        try {
+          const fd = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 3 });
+          const faces = await fd.detect(videoEl);
+          const boxes = faces.map((f) => f.boundingBox);
+          const faceCount = boxes.length;
+          const faceOk = faceCount === 1;
+          drawOverlayBoxes(overlayId, videoEl, boxes, faceOk);
+          return { brightOk: true, faceOk, faceCount, avgLuma: Math.round(avgLuma), engine: "Browser FaceDetector" };
+        } catch {}
+      }
+
+      drawOverlayBoxes(overlayId, videoEl, [], false);
+      return { brightOk: true, faceOk: false, faceCount: 0, avgLuma: Math.round(avgLuma), engine: "Model AI belum termuat" };
     }
 
-    function startLiveScan(videoId, faceBadgeId, lightBadgeId, msgId) {
+    function startLiveScan(videoId, overlayId, faceBadgeId, lightBadgeId, msgId) {
       if (scanInterval) clearInterval(scanInterval);
+      ensureFaceModel();
       scanInterval = setInterval(async () => {
         const v = document.getElementById(videoId);
         if (!v) return;
-        lastScan = await analyzeFrame(v);
+        lastScan = await analyzeFrame(v, overlayId);
         const fEl = document.getElementById(faceBadgeId);
         const lEl = document.getElementById(lightBadgeId);
         const mEl = document.getElementById(msgId);
@@ -111,17 +158,28 @@
           lEl.textContent = lastScan.brightOk ? "✓ Pencahayaan Cukup" : "✕ Terlalu Gelap / Tertutup";
         }
         if (fEl) {
-          fEl.className = `pill ${lastScan.faceOk ? "pill-green" : "pill-red"}`;
-          fEl.textContent = lastScan.faceOk ? "✓ 1 Wajah Terdeteksi" : "✕ Wajah Tidak Terdeteksi";
+          if (lastScan.faceCount === 1 && lastScan.brightOk) {
+            fEl.className = "pill pill-green";
+            fEl.textContent = "✓ 1 Wajah Terdeteksi";
+          } else if (lastScan.faceCount > 1) {
+            fEl.className = "pill pill-red";
+            fEl.textContent = `✕ ${lastScan.faceCount} Wajah (Harus 1)`;
+          } else {
+            fEl.className = "pill pill-red";
+            fEl.textContent = "✕ Wajah Tidak Terdeteksi";
+          }
         }
         if (mEl) {
-          mEl.textContent = lastScan.faceOk
-            ? "✓ Wajah dan pencahayaan terdeteksi dengan baik."
-            : !lastScan.brightOk
-            ? "⚠ Gambar terlalu gelap atau penutup kamera belum dibuka."
-            : "⚠ Posisikan wajah Anda di tengah bingkai kamera.";
+          mEl.textContent =
+            lastScan.faceOk
+              ? `✓ 1 Wajah manusia terdeteksi (${lastScan.engine}).`
+              : !lastScan.brightOk
+              ? "⚠ Gambar terlalu gelap atau penutup kamera belum dibuka."
+              : lastScan.faceCount > 1
+              ? `⚠ Terdeteksi ${lastScan.faceCount} wajah! Pastikan hanya wajah Anda di kamera.`
+              : `⚠ Wajah manusia belum terdeteksi (${lastScan.engine}). Hadapkan wajah ke kamera.`;
         }
-      }, 650);
+      }, 700);
     }
 
     window.cleanupPreAssessmentCam = stopCam;
@@ -259,8 +317,11 @@
 
             <div class="grid-2" style="align-items:center;">
               <div style="background:#0f172a;border-radius:14px;padding:12px;text-align:center;">
-                <video id="compatVideo" autoplay muted playsinline style="width:100%;max-height:220px;border-radius:10px;background:#000;object-fit:cover;"></video>
-                <div id="compatCamMsg" style="font-size:12px;color:#cbd5e1;margin-top:6px;">Memeriksa kamera...</div>
+                <div style="position:relative;display:inline-block;width:100%;">
+                  <video id="compatVideo" autoplay muted playsinline style="width:100%;max-height:220px;border-radius:10px;background:#000;object-fit:cover;display:block;"></video>
+                  <canvas id="compatOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+                </div>
+                <div id="compatCamMsg" style="font-size:12px;color:#cbd5e1;margin-top:6px;">Memuat model AI deteksi wajah...</div>
               </div>
               <div>
                 <h4 style="color:var(--primary);margin-bottom:10px;">Hasil Pemeriksaan Kompatibilitas</h4>
@@ -291,7 +352,7 @@
             pEl.className = "pill pill-green";
             pEl.textContent = "✓ Aktif & Diizinkan";
           }
-          startLiveScan("compatVideo", "stFace", "stLight", "compatCamMsg");
+          startLiveScan("compatVideo", "compatOverlay", "stFace", "stLight", "compatCamMsg");
         } catch {
           const msgEl = document.getElementById("compatCamMsg");
           if (msgEl) msgEl.textContent = "Kamera tidak terdeteksi / izin ditolak (Anda tetap dapat melanjutkan simulasi).";
@@ -333,7 +394,10 @@
                 ${
                   pf.faceCaptured && pf.faceDataUrl
                     ? `<img src="${pf.faceDataUrl}" alt="Wajah Terdaftar" style="width:100%;max-height:230px;object-fit:cover;border-radius:10px;border:2px solid #10b981;" />`
-                    : `<video id="bioVideo" autoplay muted playsinline style="width:100%;max-height:230px;border-radius:10px;background:#000;object-fit:cover;"></video>`
+                    : `<div style="position:relative;display:inline-block;width:100%;">
+                         <video id="bioVideo" autoplay muted playsinline style="width:100%;max-height:230px;border-radius:10px;background:#000;object-fit:cover;display:block;"></video>
+                         <canvas id="bioOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+                       </div>`
                 }
                 <canvas id="bioCanvas" style="display:none;"></canvas>
                 <div style="margin-top:10px;">
@@ -371,7 +435,7 @@
             }
             const v = document.getElementById("bioVideo");
             if (v) v.srcObject = camStream;
-            startLiveScan("bioVideo", "bioFaceSt", "bioLightSt", "bioCamMsg");
+            startLiveScan("bioVideo", "bioOverlay", "bioFaceSt", "bioLightSt", "bioCamMsg");
           } catch {}
         }
 
