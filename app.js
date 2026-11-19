@@ -222,7 +222,7 @@
 
             <div style="margin-top:24px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.16);display:flex;justify-content:space-between;font-size:12px;color:#bae6fd;">
               <span>SIMETA • BOD-3, BOD-4 &amp; BOD-5</span>
-              <span>KUR • Suretyship • Asuransi Umum • Generik</span>
+              <span>PortrAI • DIVE V.2 • CAP • Kompetensi IFG &amp; BUMN</span>
             </div>
           </div>
 
