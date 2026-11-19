@@ -143,6 +143,7 @@
         if (!startedAssessment || ws.incomingCallShown || ws.callStarted || ws.callEnded || activeMod === "eval") return;
         ws.incomingCallActive = true;
         ws.incomingCallShown = true;
+        ws.incomingCallShownAt = Date.now();
         startRingtone();
         renderIncomingCallPopup(pool[idx]);
       }, delayMs);
@@ -174,6 +175,9 @@
 
       document.getElementById("btnAnswerIncoming").addEventListener("click", () => {
         ws.incomingCallActive = false;
+        if (ws.incomingCallShownAt && ws.callPickupDelaySec === null) {
+          ws.callPickupDelaySec = Math.max(1, Math.round((Date.now() - ws.incomingCallShownAt) / 1000));
+        }
         stopRingtone();
         div.remove();
         saveDrafts();
@@ -186,6 +190,7 @@
 
       document.getElementById("btnDismissIncoming").addEventListener("click", () => {
         ws.incomingCallActive = false;
+        ws.callDismissedCount = (ws.callDismissedCount || 0) + 1;
         stopRingtone();
         div.remove();
       });
@@ -220,6 +225,13 @@
         ],
         incomingCallActive: false,
         incomingCallShown: false,
+        incomingCallShownAt: null,
+        callPickupDelaySec: null,
+        callDismissedCount: 0,
+        startedAt: Date.now(),
+        chatFirstReplySec: null,
+        openedFilesSet: { 0: true },
+        aiPromptsCount: 0,
         callStarted: false,
         callEnded: false,
         callSeconds: 0,
@@ -292,6 +304,7 @@
         document.getElementById("btnStartPortraiNow").addEventListener("click", () => {
           if (!finishedReading) return;
           startedAssessment = true;
+          ws.startedAt = Date.now();
           startTimer(pool[0].durationSec, "portraiTimer", () => {
             activeMod = "eval";
             draw();
@@ -812,6 +825,9 @@
           const txt = inp.value.trim();
           if (!txt) return;
           const curC = ws.contacts[ws.activeContact];
+          if (ws.chatFirstReplySec === null) {
+            ws.chatFirstReplySec = Math.max(1, Math.round((Date.now() - (ws.startedAt || Date.now())) / 1000));
+          }
           curC.messages.push({ sender: "Anda", role: "user", text: txt });
           curC.turn++;
           const lower = txt.toLowerCase();
@@ -936,6 +952,8 @@
       document.querySelectorAll("[data-open-file]").forEach((b) => {
         b.addEventListener("click", () => {
           ws.openedFileIdx = Number(b.getAttribute("data-open-file"));
+          if (!ws.openedFilesSet) ws.openedFilesSet = {};
+          ws.openedFilesSet[ws.openedFileIdx] = true;
           draw();
         });
       });
@@ -951,6 +969,7 @@
 
       document.querySelectorAll("[data-ai-hint]").forEach((b) => {
         b.addEventListener("click", () => {
+          ws.aiPromptsCount = (ws.aiPromptsCount || 0) + 1;
           const h = item.aiHints[Number(b.getAttribute("data-ai-hint"))];
           ws.aiChat.push({ role: "user", text: h.q });
           ws.aiChat.push({ role: "ai", text: h.a });
@@ -963,6 +982,7 @@
         const inp = document.getElementById("aiCopilotInput");
         const q = inp.value.trim();
         if (!q) return;
+        ws.aiPromptsCount = (ws.aiPromptsCount || 0) + 1;
         ws.aiChat.push({ role: "user", text: q });
         const ql = q.toLowerCase();
         let ans = `Berdasarkan konteks "${item.title}", pastikan Anda merespon seluruh Email & Chat, mengangkat Call, serta menyusun analisa data pada Documents.`;
@@ -986,69 +1006,293 @@
     }
 
     function renderEval(item) {
-      const emailTxt = `${ws.emailReplies[0] || ""} ${ws.emailReplies[1] || ""}`;
-      const chatTxt = ws.contacts.flatMap((c) => c.messages.filter((m) => m.role === "user").map((m) => m.text)).join(" ");
-      const callTxt = ws.callTranscript.filter((t) => t.speaker === "Anda").map((t) => t.text).join(" ") + " " + ws.callResponse;
-      const docCombined = `${ws.docExecSummary} ${ws.docAnalysis} ${ws.docActionPlan}`;
+      const countWords = (s) => (s || "").trim().split(/\s+/).filter(Boolean).length;
+
+      // 1. Analisis Email Aktual
+      const e1 = (ws.emailReplies[0] || "").trim();
+      const e2 = (ws.emailReplies[1] || "").trim();
+      const emailTxt = `${e1} ${e2}`.trim();
+      const email1Words = countWords(e1);
+      const email2Words = countWords(e2);
+      const emailsSentCount = (ws.emailSentMap[0] ? 1 : 0) + (ws.emailSentMap[1] ? 1 : 0);
+      const emailsDraftOnly = (!ws.emailSentMap[0] && e1.length >= 10 ? 1 : 0) + (!ws.emailSentMap[1] && e2.length >= 10 ? 1 : 0);
+      const emailHasDecision = /(putus|rekomendasi|setuju|tolak|tunda|prioritas|strategi|langkah|tindak lanjut|eskalasi|mitigasi)/i.test(emailTxt);
+      const emailHasPicTimeline = /(pic|tim|divisi|pukul|jam|hari ini|besok|minggu|target|deadline|sla|h\+\d)/i.test(emailTxt);
+      const emailHasNumbers = /\d+/.test(emailTxt);
+
+      // 2. Analisis Chat Aktual (kecepatan, jumlah kontak dibalas, panjang pesan)
+      const userChatMsgs = ws.contacts.flatMap((c) => c.messages.filter((m) => m.role === "user").map((m) => m.text));
+      const chatTxt = userChatMsgs.join(" ").trim();
+      const chatContactsReplied = ws.contacts.filter((c) => c.messages.some((m) => m.role === "user")).length;
+      const unrepliedContacts = ws.contacts.filter((c) => !c.messages.some((m) => m.role === "user")).map((c) => c.name);
+      const chatAvgWords = userChatMsgs.length > 0 ? Math.round(userChatMsgs.reduce((acc, t) => acc + countWords(t), 0) / userChatMsgs.length) : 0;
+      const chatFirstReplySec = ws.chatFirstReplySec;
+
+      // 3. Analisis Call Aktual
+      const callUserMsgs = ws.callTranscript.filter((t) => t.speaker === "Anda").map((t) => t.text);
+      const callTxt = `${callUserMsgs.join(" ")} ${ws.callResponse || ""}`.trim();
+      const callWords = countWords(callTxt);
+      const callHandled = ws.callStarted || ws.callEnded || callUserMsgs.length > 0;
+      const callHasAction = /(prioritas|coaching|sop|sla|audit|mitigasi|target|pic|koordinasi|evaluasi|solusi)/i.test(callTxt);
+
+      // 4. Analisis Dokumen Kerja Aktual
+      const secExec = (ws.docExecSummary || "").trim();
+      const secAnal = (ws.docAnalysis || "").trim();
+      const secPlan = (ws.docActionPlan || "").trim();
+      const docCombined = `${secExec} ${secAnal} ${secPlan}`.trim();
+      const docWords = countWords(docCombined);
+      const docFilledSections = [
+        secExec.length >= 15 ? "Ringkasan Eksekutif" : null,
+        secAnal.length >= 15 ? "Analisa Data & Risiko" : null,
+        secPlan.length >= 15 ? "Rencana Aksi & Timeline" : null
+      ].filter(Boolean);
+      const docMissingSections = [
+        secExec.length < 15 ? "Ringkasan Eksekutif" : null,
+        secAnal.length < 15 ? "Analisa Data & Risiko" : null,
+        secPlan.length < 15 ? "Rencana Aksi & Timeline" : null
+      ].filter(Boolean);
+      const docFilesOpenedCount = ws.openedFilesSet ? Object.keys(ws.openedFilesSet).length : 1;
+
+      // 5. Analisis Substansi & Skor Berbasis Bukti Nyata
       const combined = `${emailTxt} ${chatTxt} ${callTxt} ${docCombined}`.toLowerCase();
-      const matched = item.keywords.filter((k) => combined.includes(k));
-      const modulesCompleted = [emailTxt, chatTxt, callTxt, docCombined].filter((x) => x.trim().length >= 20).length;
-      const score = Math.min(98, Math.max(45, Math.round((matched.length / 7) * 55 + modulesCompleted * 10 + 5)));
+      const matched = item.keywords.filter((k) => combined.includes(k.toLowerCase()));
+      const missingKeywords = item.keywords.filter((k) => !combined.includes(k.toLowerCase()));
+      const hasMetrics = /\d+/.test(combined);
+      const elapsedSec = Math.max(1, Math.round((Date.now() - (ws.startedAt || Date.now())) / 1000));
+
+      const emailOk = emailsSentCount >= 1 && email1Words + email2Words >= 18;
+      const chatOk = chatContactsReplied >= 1 && userChatMsgs.length >= 1 && chatAvgWords >= 5;
+      const callOk = callHandled && callWords >= 12;
+      const docOk = docFilledSections.length >= 2 && docWords >= 25;
+      const modulesCompleted = [emailOk, chatOk, callOk, docOk].filter(Boolean).length;
+
+      // Skor benar-benar dihitung dari kualitas & kelengkapan nyata tiap modul (bukan angka asal)
+      const emailScore =
+        (emailsSentCount === 2 ? 12 : emailsSentCount === 1 ? 7 : emailTxt.length >= 15 ? 4 : 0) +
+        (emailHasDecision ? 5 : 0) +
+        (emailHasPicTimeline ? 4 : 0) +
+        (emailHasNumbers ? 4 : 0); // max 25
+      const chatScore =
+        (chatContactsReplied === ws.contacts.length ? 10 : chatContactsReplied === 1 ? 6 : 0) +
+        (userChatMsgs.length >= 2 ? 5 : userChatMsgs.length === 1 ? 3 : 0) +
+        (chatAvgWords >= 6 && chatAvgWords <= 75 ? 5 : chatAvgWords > 75 ? 3 : chatAvgWords > 0 ? 2 : 0) +
+        (chatFirstReplySec !== null && chatFirstReplySec <= 180 ? 5 : chatFirstReplySec !== null ? 2 : 0); // max 25
+      const callScore =
+        (callHandled ? 8 : 0) +
+        (callUserMsgs.length >= 1 && callWords >= 12 ? 7 : callWords > 0 ? 3 : 0) +
+        (callHasAction ? 5 : 0); // max 20
+      const docScore =
+        docFilledSections.length * 4 + // max 12
+        (docWords >= 45 ? 4 : docWords >= 20 ? 2 : 0) +
+        (docFilesOpenedCount >= 2 ? 2 : 0); // max 18
+      const substScore = Math.min(12, Math.round((matched.length / Math.max(5, item.keywords.length * 0.6)) * 12)); // max 12
+
+      const score = Math.min(99, Math.max(20, emailScore + chatScore + callScore + docScore + substScore));
 
       if (!state.flowResults.potrai) state.flowResults.potrai = [];
       state.flowResults.potrai[idx] = score;
 
-      const trails = [
-        { name: "Decision Making & Analysis (Email)", ok: emailTxt.trim().length >= 25, tip: "Balas seluruh email masuk dengan keputusan tegas, alasan berbasis data, dan langkah mitigasi." },
-        { name: "Customer Orientation & Partnerships (Chat AI)", ok: chatTxt.trim().length >= 25, tip: "Respon seluruh kontak chat (stakeholder & tim internal) minimal 2 kali dengan solusi win-win dan empatik." },
-        { name: "Coaching & Inspiring Others (Call)", ok: callTxt.trim().length >= 20, tip: "Aktifkan Call dan berikan arahan lisan yang jelas mencakup prioritas, pembagian peran, serta batas waktu." },
-        { name: "Planning, Organizing & Work Standards (Docs)", ok: docCombined.trim().length >= 30, tip: "Lengkapi 3 bagian Dokumen Kerja (Ringkasan Eksekutif, Analisa Data/Risiko, dan Rencana Aksi + PIC/Timeline)." }
-      ];
+      // Susun Kekuatan & Perbaikan 100% dari Bukti Aktual Pengerjaan Peserta
+      const strengths = [];
+      const improvements = [];
 
-      const strengths = trails.filter((t) => t.ok);
-      const improvements = trails.filter((t) => !t.ok);
-      const hasMetrics = /\d+/.test(combined);
-      if (!hasMetrics) {
+      // -- Evaluasi Email --
+      if (emailsSentCount === 2) {
+        strengths.push({
+          area: "Email (Decision Making)",
+          detail: `Seluruh email masuk (2/2) sudah Anda balas & kirim (${email1Words + email2Words} kata)${emailHasDecision ? " dengan arahan keputusan yang jelas" : ""}${emailHasPicTimeline ? " serta menyertakan PIC/timeline" : ""}.`
+        });
+      } else if (emailsSentCount === 1) {
+        const missingName = !ws.emailSentMap[0] ? "Email #1 (Utama)" : "Email #2 (Tindak Lanjut)";
         improvements.push({
-          name: gradeId === "BOD-3" ? "Business Acumen & Driving for Results" : "Business Awareness & Analysis & Judgment",
-          tip: "Sertakan angka/data kuantitatif dari dokumen (rupiah, persentase, margin, atau target hari SLA) dalam alasan keputusan Anda."
+          area: "Email Belum Lengkap (1/2 Terkirim)",
+          detail: `${missingName} belum terkirim. Pada asesmen resmi, seluruh email di Inbox wajib dibalas agar semua indikator kompetensi tercatat.`
+        });
+      } else {
+        improvements.push({
+          area: "Email Belum Terkirim (0/2)",
+          detail: emailsDraftOnly > 0
+            ? `Anda sempat menulis draft pada ${emailsDraftOnly} email tetapi lupa menekan tombol "Kirim Balasan". Pastikan selalu kirim sebelum mengakhiri sesi.`
+            : "Belum ada email yang dibalas. Segera tanggapi email masuk dengan struktur: Keputusan → Dasar Data → Langkah Aksi + PIC/Deadline."
         });
       }
+      if (emailTxt.length >= 10 && !emailHasPicTimeline) {
+        improvements.push({
+          area: "Struktur Tindak Lanjut Email",
+          detail: "Balasan email Anda belum mencantumkan PIC atau batas waktu (jam/hari/SLA). Tambahkan siapa yang bertanggung jawab dan kapan target selesainya."
+        });
+      }
+
+      // -- Evaluasi Chat --
+      if (userChatMsgs.length === 0) {
+        improvements.push({
+          area: "Chat Belum Direspon (0 Pesan)",
+          detail: `Belum ada kontak chat yang dibalas (${unrepliedContacts.join(", ")}). Saat notifikasi chat masuk, segera balas cepat dan ringkas agar stakeholder tidak menunggu.`
+        });
+      } else {
+        if (chatContactsReplied === ws.contacts.length) {
+          strengths.push({
+            area: "Chat Responsif (Customer & Partnerships)",
+            detail: `Anda membalas seluruh kontak chat (${chatContactsReplied}/${ws.contacts.length}, total ${userChatMsgs.length} pesan, rata-rata ${chatAvgWords} kata/pesan)${chatFirstReplySec <= 180 ? ` dengan respon awal cepat (${chatFirstReplySec} detik)` : ""}.`
+          });
+        } else {
+          improvements.push({
+            area: `Kontak Chat Terlewat (${chatContactsReplied}/${ws.contacts.length})`,
+            detail: `Anda belum membalas chat dari: ${unrepliedContacts.join(", ")}. Pastikan seluruh tab kontak di menu Chat mendapat arahan.`
+          });
+        }
+        if (chatFirstReplySec > 180) {
+          improvements.push({
+            area: `Kecepatan Respon Chat (${Math.round(chatFirstReplySec / 60)} menit)`,
+            detail: `Chat pertama baru dibalas pada menit ke-${Math.round(chatFirstReplySec / 60)}. Pada simulasi PortrAI, biasakan merespon chat segera (idealnya < 3 menit) agar tidak dianggap lamban.`
+          });
+        }
+        if (chatAvgWords > 80) {
+          improvements.push({
+            area: `Pesan Chat Terlalu Panjang (Rata-rata ${chatAvgWords} kata/pesan)`,
+            detail: "Chat Anda terlalu panjang seperti format email. Gunakan kalimat ringkas 2–4 kalimat yang langsung pada komitmen aksi & jam follow-up."
+          });
+        } else if (chatAvgWords < 6) {
+          improvements.push({
+            area: `Pesan Chat Terlalu Singkat (Rata-rata ${chatAvgWords} kata/pesan)`,
+            detail: "Balasan chat terlalu singkat sehingga kurang menunjukkan empati dan arah solusi. Sertakan minimal 1 langkah konkret & target waktu."
+          });
+        }
+      }
+
+      // -- Evaluasi Call --
+      if (!callHandled) {
+        improvements.push({
+          area: "Telepon (Call) Tidak Diangkat",
+          detail: ws.callDismissedCount > 0
+            ? `Anda menunda panggilan masuk (${ws.callDismissedCount}x) dan belum mengangkatnya hingga selesai. Pada asesmen nyata, panggilan masuk wajib diangkat untuk menilai kompetensi kepemimpinan & coaching.`
+            : "Anda belum melakukan interaksi pada fitur Call. Aktifkan/angkat panggilan dan sampaikan arahan prioritas secara jelas."
+        });
+      } else if (callUserMsgs.length === 0 || callWords < 12) {
+        improvements.push({
+          area: "Arahan Lisan di Call Kurang Mendalam",
+          detail: `Panggilan sudah diangkat${ws.callPickupDelaySec ? ` dalam ${ws.callPickupDelaySec} detik` : ""}, namun belum ada arahan lisan konkret yang dikirim di Transcript (${callWords} kata). Sampaikan prioritas, pembagian tugas, dan batas waktu.`
+        });
+      } else {
+        strengths.push({
+          area: "Penanganan Call (Coaching & Inspiring)",
+          detail: `Anda menangani panggilan masuk${ws.callPickupDelaySec ? ` (diangkat dalam ${ws.callPickupDelaySec} detik)` : ""} dengan ${callUserMsgs.length} giliran arahan (${callWords} kata)${callHasAction ? " yang memuat prioritas & langkah aksi jelas" : ""}.`
+        });
+      }
+
+      // -- Evaluasi Dokumen --
+      if (docFilledSections.length === 3) {
+        strengths.push({
+          area: "Kelengkapan Dokumen Analisa (3/3 Bagian)",
+          detail: `Ketiga bagian dokumen kerja (Ringkasan Eksekutif, Analisa Data/Risiko, Rencana Aksi) terisi lengkap (${docWords} kata) dan Anda membuka ${docFilesOpenedCount}/3 file referensi.`
+        });
+      } else {
+        improvements.push({
+          area: `Dokumen Kerja Belum Lengkap (${docFilledSections.length}/3 Bagian)`,
+          detail: `Bagian yang masih kosong/terlalu singkat: ${docMissingSections.join(", ")}. Lengkapi seluruh struktur agar kompetensi Planning & Organizing dinilai optimal.`
+        });
+      }
+      if (docFilesOpenedCount < 2) {
+        improvements.push({
+          area: `Referensi Dokumen Kurang Dibaca (${docFilesOpenedCount}/3 File)`,
+          detail: "Anda baru membuka 1 file referensi. Biasakan memeriksa Pedoman Tata Kelola dan Ringkasan KPI/SLA agar keputusan Anda tidak bertentangan dengan aturan perusahaan."
+        });
+      }
+
+      // -- Evaluasi Data Kuantitatif & Konsep Kunci --
+      if (hasMetrics) {
+        strengths.push({
+          area: "Keputusan Berbasis Data Kuantitatif",
+          detail: `Respon Anda sudah menyertakan angka/metrik konkret serta memenuhi ${matched.length} kata kunci strategis (${matched.slice(0, 5).join(", ")}).`
+        });
+      } else {
+        improvements.push({
+          area: gradeId === "BOD-3" ? "Business Acumen & Driving for Results (Tanpa Angka)" : "Business Awareness & Analysis (Tanpa Angka)",
+          detail: "Belum ditemukan angka/metrik kuantitatif dalam jawaban Anda. Selalu kutip angka (%, Rp, target hari SLA, kapasitas) untuk memperkuat argumentasi."
+        });
+      }
+      if (missingKeywords.length > 0 && matched.length < 5) {
+        improvements.push({
+          area: "Kedalaman Substansi Kasus",
+          detail: `Beberapa aspek penting pada skenario ini belum disentuh dalam jawaban Anda, antara lain: ${missingKeywords.slice(0, 4).join(", ")}.`
+        });
+      }
+
+      const telemetry = {
+        scenarioTitle: item.title,
+        score,
+        subScores: { emailScore, chatScore, callScore, docScore, substScore },
+        emailsSentCount,
+        emailWords: email1Words + email2Words,
+        chatContactsReplied,
+        chatTotalContacts: ws.contacts.length,
+        chatUserMsgCount: userChatMsgs.length,
+        chatAvgWords,
+        chatFirstReplySec,
+        unrepliedContacts,
+        callHandled,
+        callWords,
+        callPickupDelaySec: ws.callPickupDelaySec,
+        callDismissedCount: ws.callDismissedCount || 0,
+        docFilledSections,
+        docMissingSections,
+        docWords,
+        docFilesOpenedCount,
+        aiPromptsCount: ws.aiPromptsCount || 0,
+        hasMetrics,
+        matchedKeywords: matched,
+        missingKeywords: missingKeywords.slice(0, 4),
+        elapsedSec,
+        strengths,
+        improvements
+      };
+
+      if (!state.flowResults.potraiTelemetry) state.flowResults.potraiTelemetry = [];
+      state.flowResults.potraiTelemetry[idx] = telemetry;
+
+      const trails = [
+        { name: `Email (${emailsSentCount}/2 terkirim)`, ok: emailOk },
+        { name: `Chat (${chatContactsReplied}/${ws.contacts.length} kontak • ${chatAvgWords} kata/psn)`, ok: chatOk },
+        { name: `Call (${callOk ? "Diangkat & Arahan Jelas" : callHandled ? "Arahan Kurang" : "Tidak Diangkat"})`, ok: callOk },
+        { name: `Documents (${docFilledSections.length}/3 bagian • ${docFilesOpenedCount}/3 file dibaca)`, ok: docOk }
+      ];
 
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi Virtual Assessment Center — Behavioral Trails (${modulesCompleted}/4 Modul Kerja)</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Indikator perilaku &amp; konsep kunci terpenuhi: ${matched.length} poin</div>
+              <strong>Evaluasi Perilaku Aktual — Behavioral Trails (${modulesCompleted}/4 Modul Tuntas)</strong>
+              <div style="font-size:13px;color:var(--text-muted);">
+                Durasi kerja: ${Math.floor(elapsedSec / 60)} mnt ${elapsedSec % 60} dtk • Konsep kunci terdeteksi: ${matched.length}/${item.keywords.length} • Skor Sub-modul: Email ${emailScore}/25 · Chat ${chatScore}/25 · Call ${callScore}/20 · Docs ${docScore}/18 · Substansi ${substScore}/12
+              </div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
           <div class="tag-row">
             ${trails.map((t) => `<span class="tag" style="background:${t.ok ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${t.ok ? "#065f46" : "#991b1b"};">${t.ok ? "✓" : "✕"} ${t.name}</span>`).join("")}
           </div>
-          <div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>
+          ${matched.length > 0 ? `<div class="tag-row">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>` : ""}
         </div>
 
         <div class="grid-2" style="margin-top:14px;">
           <div class="feedback-box info" style="margin-top:0;">
-            <strong>✅ Kekuatan yang Terlihat (${gradeId}):</strong>
-            <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;">
+            <strong>✅ Kekuatan Nyata dari Pengerjaan Anda (${gradeId}):</strong>
+            <ul style="margin-left:18px;margin-top:6px;font-size:13px;line-height:1.6;">
               ${
                 strengths.length > 0
-                  ? strengths.map((s) => `<li><strong>${s.name}</strong> — Bukti perilaku sudah muncul dengan baik.</li>`).join("")
-                  : `<li>Anda telah mencoba menavigasi ruang kerja virtual; tingkatkan kedalaman respon pada setiap modul.</li>`
+                  ? strengths.map((s) => `<li><strong>${s.area}:</strong> ${s.detail}</li>`).join("")
+                  : `<li>Belum ada modul yang tuntas sepenuhnya pada sesi ini. Fokus selesaikan Email, Chat, Call, dan Documents secara berurutan.</li>`
               }
             </ul>
           </div>
 
           <div class="feedback-box warn" style="margin-top:0;">
-            <strong>🛠️ Feedback &amp; Perbaikan yang Mesti Dilakukan:</strong>
-            <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;">
+            <strong>🛠️ Perbaikan Spesifik Berdasarkan Aktivitas Anda:</strong>
+            <ul style="margin-left:18px;margin-top:6px;font-size:13px;line-height:1.6;">
               ${
                 improvements.length > 0
-                  ? improvements.map((im) => `<li><strong>${im.name}:</strong> ${im.tip}</li>`).join("")
-                  : `<li>Seluruh 4 modul kerja &amp; analisa angka sudah terpenuhi! Pertajam lagi komunikasi persuasif dan struktur rencana aksi agar mencapai skor maksimal.</li>`
+                  ? improvements.map((im) => `<li><strong>${im.area}:</strong> ${im.detail}</li>`).join("")
+                  : `<li>Seluruh modul Email, Chat, Call, dan Dokumen Analisa sudah Anda tangani secara lengkap, cepat, dan berbasis angka!</li>`
               }
             </ul>
           </div>

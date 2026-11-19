@@ -556,7 +556,8 @@
         flowResults: {
           personality: state.flowResults.personality || null,
           psychometric: typeof state.flowResults.psychometric === "number" ? state.flowResults.psychometric : null,
-          cap: typeof state.flowResults.cap === "number" ? state.flowResults.cap : null
+          cap: typeof state.flowResults.cap === "number" ? state.flowResults.cap : null,
+          capTelemetry: state.flowResults.capTelemetry || null
         }
       }
     });
@@ -578,6 +579,7 @@
         if (d.flowResults.personality) state.flowResults.personality = d.flowResults.personality;
         if (typeof d.flowResults.psychometric === "number") state.flowResults.psychometric = d.flowResults.psychometric;
         if (typeof d.flowResults.cap === "number") state.flowResults.cap = d.flowResults.cap;
+        if (d.flowResults.capTelemetry) state.flowResults.capTelemetry = d.flowResults.capTelemetry;
       }
       if (d.preFlow) {
         state.preFlow = { ...d.preFlow };
@@ -1287,6 +1289,16 @@
       const score = Math.min(98, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + mediaBonus)));
       if (!state.flowResults.casestudy) state.flowResults.casestudy = [];
       state.flowResults.casestudy[idx] = score;
+      if (!state.flowResults.casestudyTelemetry) state.flowResults.casestudyTelemetry = [];
+      state.flowResults.casestudyTelemetry[idx] = {
+        title: item.title,
+        words,
+        hasVideo: Boolean(recordedVideoUrl),
+        hasAudio: Boolean(recordedAudioUrl),
+        matchedKeywords: matched,
+        missingKeywords: item.keywords.filter((k) => !combined.includes(k)).slice(0, 4),
+        score
+      };
 
       return `
         <div class="feedback-box">
@@ -1452,6 +1464,15 @@
       const totalWords = essayText.split(/\s+/).filter(Boolean).length;
       const score = Math.min(97, Math.max(52, (totalWords >= 70 ? 48 : totalWords >= 40 ? 36 : 24) + (hasFirstPerson ? 18 : 6) + (hasNumbers ? 16 : 6) + (hasResultWord ? 14 : 6)));
       scores[idx] = score;
+      if (!state.flowResults.capTelemetry) state.flowResults.capTelemetry = [];
+      state.flowResults.capTelemetry[idx] = {
+        competency: item.competency,
+        words: totalWords,
+        hasFirstPerson,
+        hasNumbers,
+        hasResultWord,
+        score
+      };
 
       return `
         <div class="feedback-box">
@@ -1986,13 +2007,118 @@
       }
     }
 
+    // === BANGUN FEEDBACK 100% DARI BUKTI AKTUAL PENGERJAAN PESERTA ===
+    const realStrengths = [];
+    const realImprovements = [];
+
+    // 1. Analisis Aktual Simulasi PortrAI
+    if (Array.isArray(res.potraiTelemetry) && res.potraiTelemetry.length > 0) {
+      res.potraiTelemetry.filter(Boolean).forEach((t) => {
+        (t.strengths || []).forEach((s) => realStrengths.push(`[PortrAI] <strong>${s.area}:</strong> ${s.detail}`));
+        (t.improvements || []).forEach((im) => realImprovements.push(`[PortrAI] <strong>${im.area}:</strong> ${im.detail}`));
+      });
+    }
+
+    // 2. Analisis Aktual Career Achievement Portfolio (CAP)
+    if (Array.isArray(res.capTelemetry) && res.capTelemetry.length > 0) {
+      const capItems = res.capTelemetry.filter(Boolean);
+      const avgCapWords = Math.round(capItems.reduce((a, c) => a + c.words, 0) / capItems.length);
+      const fpOk = capItems.filter((c) => c.hasFirstPerson).length;
+      const numOk = capItems.filter((c) => c.hasNumbers).length;
+      const resOk = capItems.filter((c) => c.hasResultWord).length;
+      const noNumComps = capItems.filter((c) => !c.hasNumbers).map((c) => c.competency);
+      const noFpComps = capItems.filter((c) => !c.hasFirstPerson).map((c) => c.competency);
+
+      if (avgCapWords >= 60 && fpOk === capItems.length && numOk === capItems.length) {
+        realStrengths.push(
+          `[CAP] <strong>Bukti Perilaku STAR Sangat Lengkap:</strong> Rata-rata ${avgCapWords} kata/soal, seluruh jawaban (${fpOk}/${capItems.length}) menegaskan peran pribadi ("Saya") dan menyertakan metrik angka terukur (${numOk}/${capItems.length}).`
+        );
+      } else {
+        if (avgCapWords >= 50) {
+          realStrengths.push(`[CAP] <strong>Elaborasi Cerita Baik:</strong> Rata-rata panjang jawaban Anda ${avgCapWords} kata per pertanyaan.`);
+        } else {
+          realImprovements.push(
+            `[CAP] <strong>Jawaban Terlalu Singkat (Rata-rata ${avgCapWords} kata):</strong> Perdalam alur Situasi → Peran → Langkah Nyata → Hasil (idealnya minimal 70–100 kata per kasus) agar bukti perilaku mudah dinilai asesor.`
+          );
+        }
+        if (fpOk < capItems.length) {
+          realImprovements.push(
+            `[CAP] <strong>Kepemilikan Tindakan ("Saya") Kurang Tegas (${fpOk}/${capItems.length}):</strong> Pada kompetensi <em>${noFpComps.join(", ")}</em>, perjelas kontribusi pribadi Anda dengan kata "Saya...", bukan hanya "Kami/Tim".`
+          );
+        }
+        if (numOk < capItems.length) {
+          realImprovements.push(
+            `[CAP] <strong>Angka Dampak Terukur Belum Lengkap (${numOk}/${capItems.length}):</strong> Pada kompetensi <em>${noNumComps.join(", ")}</em>, belum ada angka konkret (%, Rp, target hari SLA, jumlah proyek).`
+          );
+        }
+        if (resOk < capItems.length) {
+          realImprovements.push(
+            `[CAP] <strong>Penegasan Hasil Akhir (Result):</strong> Pastikan setiap cerita ditutup dengan dampak nyata yang dicapai bagi unit/perusahaan.`
+          );
+        }
+      }
+    }
+
+    // 3. Analisis Aktual Personality Test (OCEAN)
+    if (res.personality && res.personality.dimensions) {
+      const dimEntries = Object.entries(res.personality.dimensions).sort((a, b) => b[1] - a[1]);
+      const topDim = dimEntries[0];
+      const lowDim = dimEntries[dimEntries.length - 1];
+      const dimAdvice = {
+        Openness: "Perkuat keberanian mengajukan inovasi proses, adaptasi teknologi digital, dan alternatif solusi di luar kebiasaan lama.",
+        Conscientiousness: "Tingkatkan ketelitian terhadap detail SOP, struktur rencana kerja (PIC & timeline), serta disiplin evaluasi target.",
+        Extraversion: "Perbanyak inisiatif komunikasi proaktif, keberanian memimpin diskusi stakeholder, dan energi dalam menginspirasi tim.",
+        Agreeableness: "Perkuat empati saat merespon keluhan, bangun kesepakatan win-win lintas divisi, dan hindari nada terlalu konfrontatif.",
+        "Emotional Stability": "Jaga ketenangan saat menerima interupsi/tekanan krisis (terutama saat Call & Chat mendesak) agar keputusan tetap objektif."
+      };
+      if (topDim) {
+        realStrengths.push(
+          `[Personality OCEAN] <strong>Dimensi Paling Menonjol — ${topDim[0]} (${topDim[1]}/100):</strong> Menjadi modal perilaku utama Anda dalam menjalankan peran ${state.selectedGrade}.`
+        );
+      }
+      if (lowDim && lowDim[1] < 80) {
+        realImprovements.push(
+          `[Personality OCEAN] <strong>Area Prioritas Observasi — ${lowDim[0]} (${lowDim[1]}/100):</strong> ${dimAdvice[lowDim[0]] || "Selaraskan konsistensi perilaku dengan tuntutan kompetensi jabatan."}`
+        );
+      }
+    }
+
+    // 4. Analisis Aktual Case Study + Async Presentation (BOD-5)
+    if (Array.isArray(res.casestudyTelemetry) && res.casestudyTelemetry.length > 0) {
+      res.casestudyTelemetry.filter(Boolean).forEach((cs) => {
+        if (cs.hasVideo || cs.hasAudio) {
+          realStrengths.push(
+            `[Case Study] <strong>Presentasi Asinkron Tercatat:</strong> Anda merekam ${cs.hasVideo ? "Video + Suara" : "Audio"} dengan total ${cs.words} kata analisis & ${cs.matchedKeywords.length} konsep kunci.`
+          );
+        } else {
+          realImprovements.push(
+            `[Case Study] <strong>Rekaman Presentasi Belum Dilakukan:</strong> Anda hanya mengisi teks (${cs.words} kata) tanpa rekaman video/audio. Pada asesmen BOD-5, artikulasi presentasi kamera dinilai langsung.`
+          );
+        }
+        if (cs.missingKeywords && cs.missingKeywords.length > 0 && cs.matchedKeywords.length < 5) {
+          realImprovements.push(
+            `[Case Study] <strong>Aspek Analisis yang Belum Disentuh:</strong> Pertimbangkan membahas poin berikut: ${cs.missingKeywords.join(", ")}.`
+          );
+        }
+      });
+    }
+
+    // 5. Analisis Aktual Psychometric (BOD-5)
+    if (typeof res.psychometric === "number") {
+      if (res.psychometric >= 80) {
+        realStrengths.push(`[Psychometric Test] <strong>Ketepatan Kognitif Tinggi (${res.psychometric}/100):</strong> Logika analisis data dan pemahaman verbal sudah sangat siap.`);
+      } else {
+        realImprovements.push(`[Psychometric Test] <strong>Akurasi Perlu Ditingkatkan (${res.psychometric}/100):</strong> Latih ketelitian membaca tabel angka, pola deret, dan manajemen waktu per butir soal.`);
+      }
+    }
+
     root.innerHTML = `
       <div class="card">
         <div class="assess-header">
           <div>
             <span class="grade-badge">${GRADES[state.selectedGrade].title}</span>
             <h2 style="font-size:22px;color:var(--primary);">Laporan Hasil Simulasi Asesmen</h2>
-            <div style="font-size:13px;color:var(--text-muted);">Fokus Unit: ${state.unitFilter}</div>
+            <div style="font-size:13px;color:var(--text-muted);">Fokus Unit: ${state.unitFilter} • Evaluasi 100% Berbasis Bukti Pengerjaan Aktual</div>
           </div>
           <div style="text-align:right;">
             <div class="score-big">${totalAvg}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
@@ -2017,23 +2143,24 @@
                 .join("")}
             </ul>
 
-            <div class="feedback-box info">
-              <strong>✅ Ringkasan Evaluasi &amp; Saran Perbaikan (${state.selectedGrade}):</strong>
-              <ul style="margin-left:18px;margin-top:8px;font-size:13.5px;line-height:1.65;">
+            <div class="feedback-box info" style="margin-top:12px;">
+              <strong>✅ Kekuatan Nyata dari Pengerjaan Anda:</strong>
+              <ul style="margin-left:18px;margin-top:8px;font-size:13px;line-height:1.65;">
                 ${
-                  scores.map((s) =>
-                    s.score >= 80
-                      ? `<li><strong>${s.label} (${s.score}/100):</strong> Sudah sangat baik (<em>Ready Now</em>). Pertahankan konsistensi keputusan berbasis data dan kolaborasi lintas unit.</li>`
-                      : `<li><strong>${s.label} (${s.score}/100) — Perlu Ditingkatkan:</strong> ${
-                          s.label.includes("PortrAI") || s.label.includes("Case Study")
-                            ? "Pastikan seluruh Email & Chat terjawab tuntas, angkat Call dengan arahan jelas, dan sertakan angka/timeline konkret di Dokumen Analisa."
-                            : s.label.includes("CAP")
-                            ? "Gunakan struktur pengalaman konkret (Situasi, Peran, Tindakan pribadi dengan kata 'Saya', dan Hasil berupa angka terukur)."
-                            : s.label.includes("Personality")
-                            ? "Perhatikan area prioritas observasi (" + (state.preAssessment.focusArea || "konsistensi perilaku") + ") agar selaras dengan tuntutan kompetensi " + state.selectedGrade + "."
-                            : "Tingkatkan ketelitian membaca angka, logika deduktif, dan kecepatan manajemen waktu."
-                        }</li>`
-                  ).join("")
+                  realStrengths.length > 0
+                    ? realStrengths.map((item) => `<li>${item}</li>`).join("")
+                    : `<li>Belum cukup bukti pengerjaan yang tuntas pada sesi ini. Selesaikan seluruh modul agar kekuatan perilaku Anda dapat terpetakan.</li>`
+                }
+              </ul>
+            </div>
+
+            <div class="feedback-box warn" style="margin-top:12px;">
+              <strong>🛠️ Perbaikan Spesifik Berdasarkan Aktivitas &amp; Jawaban Anda:</strong>
+              <ul style="margin-left:18px;margin-top:8px;font-size:13px;line-height:1.65;">
+                ${
+                  realImprovements.length > 0
+                    ? realImprovements.map((item) => `<li>${item}</li>`).join("")
+                    : `<li>Luar biasa! Seluruh indikator utama pada modul yang Anda kerjakan sudah terpenuhi secara lengkap, cepat, dan terukur.</li>`
                 }
               </ul>
             </div>
