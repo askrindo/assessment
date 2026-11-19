@@ -86,12 +86,15 @@
   function updateTopbarSession() {
     const u = state.currentUser;
     if (u) {
+      const isAdmin = u.role === "admin";
       userSessionBadge.style.display = "inline-block";
-      userSessionBadge.textContent = `${u.full_name} (${u.role.toUpperCase()} • ${u.grade})`;
-      btnHistory.style.display = "inline-flex";
-      btnResetHome.style.display = "inline-flex";
+      userSessionBadge.textContent = isAdmin
+        ? `${u.full_name} (ADMIN)`
+        : `${u.full_name} (${u.role.toUpperCase()} • ${u.grade})`;
+      btnHistory.style.display = isAdmin ? "none" : "inline-flex";
+      btnResetHome.style.display = isAdmin ? "none" : "inline-flex";
       btnLogout.style.display = "inline-flex";
-      btnAdmin.style.display = u.role === "admin" ? "inline-flex" : "none";
+      btnAdmin.style.display = isAdmin ? "inline-flex" : "none";
     } else {
       userSessionBadge.style.display = "none";
       btnHistory.style.display = "none";
@@ -334,7 +337,8 @@
           state.participantNip = res.user.nip;
           localStorage.setItem("askrindo_session_v1", JSON.stringify(res.user));
           updateTopbarSession();
-          renderHome();
+          if (res.user.role === "admin") renderAdminPanel();
+          else renderHome();
         };
         document.getElementById("btnDoLogin").addEventListener("click", submitLogin);
         document.getElementById("loginPw").addEventListener("keydown", (e) => {
@@ -396,6 +400,10 @@
   function renderHome() {
     if (!state.currentUser) {
       renderLogin();
+      return;
+    }
+    if (state.currentUser.role === "admin") {
+      renderAdminPanel();
       return;
     }
     cleanupAllSessions();
@@ -527,11 +535,17 @@
 
   function isGradeAllowed(gradeId) {
     if (!state.currentUser) return false;
-    if (state.currentUser.role === "admin" || state.currentUser.allow_all_grades) return true;
+    if (state.currentUser.role === "admin") return false;
+    if (state.currentUser.allow_all_grades) return true;
     return state.currentUser.grade === gradeId;
   }
 
   function openPreAssessmentLobby(gradeId) {
+    if (state.currentUser && state.currentUser.role === "admin") {
+      alert("Akun Admin hanya berfungsi untuk mengelola user dan tidak dapat mengerjakan assessment.");
+      renderAdminPanel();
+      return;
+    }
     state.selectedGrade = gradeId;
     state.inPreLobby = true;
     if (typeof window.renderPreAssessmentFlow === "function") {
@@ -566,6 +580,11 @@
   }
 
   function startFullAssessment(gradeId) {
+    if (state.currentUser && state.currentUser.role === "admin") {
+      alert("Akun Admin hanya berfungsi untuk mengelola user dan tidak dapat mengerjakan assessment.");
+      renderAdminPanel();
+      return;
+    }
     if (!isGradeAllowed(gradeId)) {
       alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
       return;
@@ -587,6 +606,11 @@
   }
 
   function launchMethod(gradeId, methodId) {
+    if (state.currentUser && state.currentUser.role === "admin") {
+      alert("Akun Admin hanya berfungsi untuk mengelola user dan tidak dapat mengerjakan assessment.");
+      renderAdminPanel();
+      return;
+    }
     if (!isGradeAllowed(gradeId)) {
       alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
       return;
@@ -2117,8 +2141,8 @@
             <div>
               <span class="grade-badge amber">Panel Administrator SDM</span>
               <h2 style="font-size:22px;color:var(--primary);">Kelola Data User Pegawai &amp; Rekap Asesmen</h2>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Akun Administrator khusus untuk pengelolaan user pegawai, verifikasi akun, dan pemantauan rekap hasil asesmen.</p>
             </div>
-            <button class="btn btn-outline-dark btn-sm" id="btnAdminBack">Kembali ke Beranda</button>
           </div>
 
           <div class="potrai-tabs">
@@ -2276,7 +2300,6 @@
         </div>
       `;
 
-      document.getElementById("btnAdminBack").addEventListener("click", renderHome);
       document.querySelectorAll("[data-atab]").forEach((b) => {
         b.addEventListener("click", () => {
           adminTab = b.getAttribute("data-atab");
@@ -2412,6 +2435,10 @@
 
   initSupabaseStatus();
   updateTopbarSession();
-  if (state.currentUser) renderHome();
-  else renderLogin();
+  if (state.currentUser) {
+    if (state.currentUser.role === "admin") renderAdminPanel();
+    else renderHome();
+  } else {
+    renderLogin();
+  }
 })();
