@@ -28,13 +28,100 @@
     }
 
     let camStream = null;
-    let compatStatus = { browser: true, webcamPerm: false, camera: false, env: true };
+    let scanInterval = null;
+    let lastScan = { brightOk: false, faceOk: false, avgLuma: 0 };
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = 120;
+    offCanvas.height = 90;
+    const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
 
     function stopCam() {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+      }
       if (camStream) {
         camStream.getTracks().forEach((t) => t.stop());
         camStream = null;
       }
+    }
+
+    async function analyzeFrame(videoEl) {
+      if (!videoEl || videoEl.readyState < 2 || videoEl.videoWidth === 0) {
+        return { brightOk: false, faceOk: false, avgLuma: 0 };
+      }
+      offCtx.drawImage(videoEl, 0, 0, 120, 90);
+      const data = offCtx.getImageData(0, 0, 120, 90).data;
+      let sum = 0;
+      let sumSq = 0;
+      let skinPixels = 0;
+      let centerPixels = 0;
+      const total = 120 * 90;
+
+      for (let y = 0; y < 90; y++) {
+        for (let x = 0; x < 120; x++) {
+          const i = (y * 120 + x) * 4;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+          sum += luma;
+          sumSq += luma * luma;
+
+          // Cek area oval tengah untuk deteksi keberadaan wajah (YCbCr skin tone)
+          if (x >= 28 && x <= 92 && y >= 12 && y <= 82) {
+            centerPixels++;
+            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+            if (luma > 40 && cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173) {
+              skinPixels++;
+            }
+          }
+        }
+      }
+
+      const avgLuma = sum / total;
+      const variance = sumSq / total - avgLuma * avgLuma;
+      const brightOk = avgLuma >= 35 && variance >= 90;
+      let faceOk = brightOk && skinPixels / centerPixels >= 0.06;
+
+      // Gunakan FaceDetector bawaan browser jika tersedia
+      if (brightOk && "FaceDetector" in window) {
+        try {
+          const fd = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 2 });
+          const faces = await fd.detect(videoEl);
+          faceOk = faces.length === 1;
+        } catch {}
+      }
+
+      return { brightOk, faceOk, avgLuma: Math.round(avgLuma) };
+    }
+
+    function startLiveScan(videoId, faceBadgeId, lightBadgeId, msgId) {
+      if (scanInterval) clearInterval(scanInterval);
+      scanInterval = setInterval(async () => {
+        const v = document.getElementById(videoId);
+        if (!v) return;
+        lastScan = await analyzeFrame(v);
+        const fEl = document.getElementById(faceBadgeId);
+        const lEl = document.getElementById(lightBadgeId);
+        const mEl = document.getElementById(msgId);
+        if (lEl) {
+          lEl.className = `pill ${lastScan.brightOk ? "pill-green" : "pill-red"}`;
+          lEl.textContent = lastScan.brightOk ? "✓ Pencahayaan Cukup" : "✕ Terlalu Gelap / Tertutup";
+        }
+        if (fEl) {
+          fEl.className = `pill ${lastScan.faceOk ? "pill-green" : "pill-red"}`;
+          fEl.textContent = lastScan.faceOk ? "✓ 1 Wajah Terdeteksi" : "✕ Wajah Tidak Terdeteksi";
+        }
+        if (mEl) {
+          mEl.textContent = lastScan.faceOk
+            ? "✓ Wajah dan pencahayaan terdeteksi dengan baik."
+            : !lastScan.brightOk
+            ? "⚠ Gambar terlalu gelap atau penutup kamera belum dibuka."
+            : "⚠ Posisikan wajah Anda di tengah bingkai kamera.";
+        }
+      }, 650);
     }
 
     window.cleanupPreAssessmentCam = stopCam;
@@ -179,9 +266,9 @@
                 <h4 style="color:var(--primary);margin-bottom:10px;">Hasil Pemeriksaan Kompatibilitas</h4>
                 <ul class="method-list" id="compatChecklist" style="margin-bottom:0;">
                   <li><span>Browser Kompatibel</span><span class="pill pill-green">✓ Siap</span></li>
-                  <li><span>Izin Webcam</span><span class="pill pill-amber" id="stPerm">Memeriksa...</span></li>
-                  <li><span>Kamera Aktif</span><span class="pill pill-amber" id="stCam">Memeriksa...</span></li>
-                  <li><span>1 Wajah Terdeteksi &amp; Lingkungan Mendukung</span><span class="pill pill-amber" id="stFace">Memeriksa...</span></li>
+                  <li><span>Izin Webcam &amp; Kamera</span><span class="pill pill-amber" id="stPerm">Memeriksa...</span></li>
+                  <li><span>Lingkungan &amp; Pencahayaan</span><span class="pill pill-amber" id="stLight">Memeriksa...</span></li>
+                  <li><span>1 Wajah Terdeteksi</span><span class="pill pill-amber" id="stFace">Memeriksa...</span></li>
                 </ul>
               </div>
             </div>
@@ -199,24 +286,16 @@
           }
           const v = document.getElementById("compatVideo");
           if (v) v.srcObject = camStream;
-          compatStatus.webcamPerm = true;
-          compatStatus.camera = true;
-          const setOk = (id, txt) => {
-            const el = document.getElementById(id);
-            if (el) {
-              el.className = "pill pill-green";
-              el.textContent = txt;
-            }
-          };
-          setOk("stPerm", "✓ Diizinkan");
-          setOk("stCam", "✓ Aktif");
-          setOk("stFace", "✓ Terdeteksi");
-          const msgEl = document.getElementById("compatCamMsg");
-          if (msgEl) msgEl.textContent = "✓ Perangkat kamera siap digunakan.";
+          const pEl = document.getElementById("stPerm");
+          if (pEl) {
+            pEl.className = "pill pill-green";
+            pEl.textContent = "✓ Aktif & Diizinkan";
+          }
+          startLiveScan("compatVideo", "stFace", "stLight", "compatCamMsg");
         } catch {
           const msgEl = document.getElementById("compatCamMsg");
           if (msgEl) msgEl.textContent = "Kamera tidak terdeteksi / izin ditolak (Anda tetap dapat melanjutkan simulasi).";
-          ["stPerm", "stCam", "stFace"].forEach((id) => {
+          ["stPerm", "stLight", "stFace"].forEach((id) => {
             const el = document.getElementById(id);
             if (el) {
               el.className = "pill pill-amber";
@@ -265,14 +344,15 @@
               <div>
                 <h4 style="color:var(--primary);margin-bottom:10px;">Result Deteksi Biometrik</h4>
                 <ul class="method-list" style="margin-bottom:12px;">
-                  <li><span>1 Wajah Terdeteksi</span><span class="pill pill-green">✓ Sesuai</span></li>
-                  <li><span>Lingkungan &amp; Pencahayaan</span><span class="pill pill-green">✓ Mendukung</span></li>
+                  <li><span>1 Wajah Terdeteksi</span><span class="pill ${pf.faceCaptured ? "pill-green" : "pill-amber"}" id="bioFaceSt">${pf.faceCaptured ? "✓ Terdaftar" : "Memeriksa..."}</span></li>
+                  <li><span>Lingkungan &amp; Pencahayaan</span><span class="pill ${pf.faceCaptured ? "pill-green" : "pill-amber"}" id="bioLightSt">${pf.faceCaptured ? "✓ Cukup" : "Memeriksa..."}</span></li>
                   <li><span>Status Wajah Terdaftar</span><span class="pill ${pf.faceCaptured ? "pill-green" : "pill-amber"}">${pf.faceCaptured ? "✓ Wajah Terdaftar" : "Belum Diambil"}</span></li>
                 </ul>
+                <div id="bioCamMsg" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;"></div>
                 ${
                   pf.faceCaptured
                     ? `<div class="feedback-box" style="margin-top:0;font-size:13px;"><strong>✓ Pendaftaran Wajah Berhasil!</strong> Wajah Anda telah terdaftar untuk sesi simulasi ini.</div>`
-                    : `<div class="feedback-box warn" style="margin-top:0;font-size:13px;">Klik <strong>Ambil Data Wajah</strong> untuk mendaftarkan wajah Anda sebelum melanjutkan.</div>`
+                    : `<div class="feedback-box warn" style="margin-top:0;font-size:13px;">Pastikan wajah terlihat jelas &amp; tidak gelap, lalu klik <strong>Ambil Data Wajah</strong>.</div>`
                 }
               </div>
             </div>
@@ -291,6 +371,7 @@
             }
             const v = document.getElementById("bioVideo");
             if (v) v.srcObject = camStream;
+            startLiveScan("bioVideo", "bioFaceSt", "bioLightSt", "bioCamMsg");
           } catch {}
         }
 
@@ -299,6 +380,10 @@
             pf.faceCaptured = false;
             pf.faceDataUrl = null;
             draw();
+            return;
+          }
+          if (!lastScan.brightOk || !lastScan.faceOk) {
+            alert("Wajah belum terdeteksi atau gambar terlalu gelap. Pastikan penutup kamera terbuka dan pencahayaan cukup.");
             return;
           }
           const v = document.getElementById("bioVideo");
