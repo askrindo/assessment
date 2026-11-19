@@ -133,6 +133,9 @@
     if (typeof window.cleanupPortraiEngine === "function") {
       window.cleanupPortraiEngine();
     }
+    if (typeof window.cleanupPreAssessmentCam === "function") {
+      window.cleanupPreAssessmentCam();
+    }
   }
 
   function startTimer(seconds, elId, onExpire) {
@@ -528,6 +531,40 @@
     return state.currentUser.grade === gradeId;
   }
 
+  function openPreAssessmentLobby(gradeId) {
+    state.selectedGrade = gradeId;
+    state.inPreLobby = true;
+    if (typeof window.renderPreAssessmentFlow === "function") {
+      window.renderPreAssessmentFlow({
+        root,
+        gradeId,
+        data: GRADES[gradeId],
+        state,
+        cleanupAllSessions,
+        onLaunchPersonality: () => {
+          state.fullFlow = false;
+          if (gradeId === "BOD-5") renderPsychometric(gradeId);
+          else renderOceanPersonality(gradeId);
+        },
+        onLaunchCap: () => {
+          state.fullFlow = false;
+          renderCapStar(gradeId);
+        },
+        onLaunchMainAssessment: () => {
+          state.inPreLobby = false;
+          state.fullFlow = true;
+          state.flowQueue = [];
+          if (gradeId === "BOD-5") renderCaseStudy(gradeId);
+          else renderPotrai(gradeId);
+        },
+        onBackHome: () => {
+          state.inPreLobby = false;
+          renderHome();
+        }
+      });
+    }
+  }
+
   function startFullAssessment(gradeId) {
     if (!isGradeAllowed(gradeId)) {
       alert(`Akun Anda hanya diizinkan mengakses simulasi untuk grade ${state.currentUser.grade}.`);
@@ -536,8 +573,9 @@
     state.selectedGrade = gradeId;
     state.fullFlow = true;
     state.flowResults = {};
-    state.flowQueue = GRADES[gradeId].methods.map((m) => m.id);
-    nextInFlow();
+    state.preAssessment = { personalityDone: false, capDone: false, focusArea: null };
+    state.preFlow = null;
+    openPreAssessmentLobby(gradeId);
   }
 
   function nextInFlow() {
@@ -1216,7 +1254,11 @@
           </div>
         `;
         document.getElementById("btnCapFinalNext").addEventListener("click", () => {
-          if (state.fullFlow) nextInFlow();
+          if (state.preFlow) state.preFlow.capEnd = new Date().toLocaleString("id-ID");
+          if (state.inPreLobby) {
+            state.preFlow.step = "lobby";
+            openPreAssessmentLobby(gradeId);
+          } else if (state.fullFlow) nextInFlow();
           else renderReport();
         });
         return;
@@ -1444,7 +1486,11 @@
           </div>
         `;
         document.getElementById("btnOceanFinalNext").addEventListener("click", () => {
-          if (state.fullFlow) nextInFlow();
+          if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
+          if (state.inPreLobby) {
+            state.preFlow.step = "lobby";
+            openPreAssessmentLobby(gradeId);
+          } else if (state.fullFlow) nextInFlow();
           else renderReport();
         });
         return;
@@ -1679,7 +1725,11 @@
           } else {
             clearTimer();
             state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
-            if (state.fullFlow) nextInFlow();
+            if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
+            if (state.inPreLobby) {
+              state.preFlow.step = "lobby";
+              openPreAssessmentLobby(gradeId);
+            } else if (state.fullFlow) nextInFlow();
             else renderReport();
           }
         });
