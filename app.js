@@ -1400,7 +1400,15 @@
     }
 
     let pageIdx = 0;
-    let doneScreen = false;
+    let oceanPhase = "welcome"; // welcome | instructions | sample | test | done
+    const sampleItems = [
+      { id: "smp-1", text: "Saya mendengarkan musik setiap hari." },
+      { id: "smp-2", text: "Setelah bangun tidur, saya membiasakan diri untuk minum air putih terlebih dahulu." },
+      { id: "smp-3", text: "Untuk belajar saya perlu berada di ruangan yang sepi." },
+      { id: "smp-4", text: "Banyak orang di sekitar saya yang mengira saya orang yang pendiam." },
+      { id: "smp-5", text: "Saya selalu merapikan meja kerja sebelum meninggalkan kantor." }
+    ];
+    const sampleMap = { "smp-1": "pool", "smp-2": "pool", "smp-3": "pool", "smp-4": "pool", "smp-5": "pool" };
     // placements[pageIdx] = { id: 'pool' | 'most' | 'neutral' | 'least' }
     const placements = pages.map((grp) => {
       const map = {};
@@ -1440,16 +1448,12 @@
       };
       state.preAssessment.personalityDone = true;
       state.preAssessment.focusArea = lowestDim;
-      doneScreen = true;
+      oceanPhase = "done";
       draw();
     }
 
-    if (isFull) {
-      startTimer(2400, "oceanTimer", computeOceanResults); // 40 menit standar asli
-    }
-
     function moveCard(itemId, targetZone) {
-      const map = placements[pageIdx];
+      const map = oceanPhase === "sample" ? sampleMap : placements[pageIdx];
       const counts = { most: 0, neutral: 0, least: 0 };
       Object.values(map).forEach((v) => {
         if (counts[v] !== undefined) counts[v]++;
@@ -1464,7 +1468,72 @@
     }
 
     function draw() {
-      if (doneScreen) {
+      const connPill = `<span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">📶 Connection: ${navigator.onLine ? "normal" : "terputus"}</span>`;
+
+      if (oceanPhase === "welcome") {
+        root.innerHTML = `
+          <div class="card" style="max-width:780px;margin:0 auto;">
+            <div class="assess-header">
+              <div><span class="grade-badge">PRE-ASSESSMENT | PERSONALITY TEST — LAMAN AWAL</span></div>
+              ${connPill}
+            </div>
+            <div class="ddi-done-card" style="padding:32px 24px;">
+              <h2 style="color:var(--primary);letter-spacing:0.5px;margin-bottom:10px;">SELAMAT DATANG</h2>
+              <p style="font-size:14px;color:var(--text-muted);max-width:560px;margin:0 auto 20px;">
+                Selamat datang di aktivitas <strong>Disposition-Five (DIVE) Inventory V.2 (Personality Test)</strong>.
+                Tes ini bertujuan untuk memahami kecenderungan perilaku dan kepribadian Anda berdasarkan 5 dimensi <strong>OCEAN</strong>.
+                Tidak ada jawaban benar atau salah — jawablah secara jujur sesuai diri Anda.
+              </p>
+              <button class="btn btn-accent" id="btnWelcomeNext">Lanjut ke Instruksi Pengerjaan →</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnWelcomeNext").addEventListener("click", () => {
+          oceanPhase = "instructions";
+          draw();
+        });
+        return;
+      }
+
+      if (oceanPhase === "instructions") {
+        root.innerHTML = `
+          <div class="card" style="max-width:780px;margin:0 auto;">
+            <div class="assess-header">
+              <div><span class="grade-badge">PRE-ASSESSMENT | PERSONALITY TEST — LAMAN INSTRUKSI</span></div>
+              ${connPill}
+            </div>
+            <div class="memo-box" style="margin-bottom:18px;">
+              <h4 style="text-align:center;font-size:17px;margin-bottom:12px;">INSTRUKSI PENGERJAAN</h4>
+              <ol style="margin-left:20px;line-height:1.75;font-size:14px;">
+                <li>Pada setiap halaman terdapat <strong>5 pernyataan</strong> di kotak kiri (<em>Statement</em>).</li>
+                <li>Pindahkan seluruh 5 pernyataan tersebut (dengan cara <em>drag &amp; drop</em> atau tombol cepat) ke <strong>3 kotak di sisi kanan</strong>:
+                  <ul style="margin-left:18px;margin-top:4px;">
+                    <li><strong>Paling Menggambarkan Saya:</strong> tepat <strong>1 pernyataan</strong></li>
+                    <li><strong>Netral:</strong> tepat <strong>3 pernyataan</strong></li>
+                    <li><strong>Paling Sedikit Menggambarkan Saya:</strong> tepat <strong>1 pernyataan</strong></li>
+                  </ul>
+                </li>
+                <li>Anda <strong>tidak dapat melanjutkan</strong> ke halaman berikutnya sebelum seluruh 5 pernyataan ditempatkan sesuai kuota.</li>
+              </ol>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <button class="btn btn-outline-dark" id="btnInstrBack">← Kembali</button>
+              <button class="btn btn-accent" id="btnInstrNext">Coba Contoh Pengerjaan →</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnInstrBack").addEventListener("click", () => {
+          oceanPhase = "welcome";
+          draw();
+        });
+        document.getElementById("btnInstrNext").addEventListener("click", () => {
+          oceanPhase = "sample";
+          draw();
+        });
+        return;
+      }
+
+      if (oceanPhase === "done") {
         const endTimeStr = new Date().toLocaleString("id-ID");
         root.innerHTML = `
           <div class="card">
@@ -1496,8 +1565,9 @@
         return;
       }
 
-      const grp = pages[pageIdx];
-      const map = placements[pageIdx];
+      const isSample = oceanPhase === "sample";
+      const grp = isSample ? sampleItems : pages[pageIdx];
+      const map = isSample ? sampleMap : placements[pageIdx];
       const inPool = grp.filter((it) => map[it.id] === "pool");
       const inMost = grp.filter((it) => map[it.id] === "most");
       const inNeutral = grp.filter((it) => map[it.id] === "neutral");
@@ -1520,11 +1590,15 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge">${data.title} • PRE-ASSESSMENT | PERSONALITY TEST</span>
-              <h2 style="font-size:20px;color:var(--primary);">Memilih Pernyataan (Halaman ${pageIdx + 1} dari ${pages.length})</h2>
+              <span class="grade-badge ${isSample ? "amber" : ""}">${isSample ? "CONTOH PENGERJAAN (LATIHAN)" : `${data.title} • PRE-ASSESSMENT | PERSONALITY TEST`}</span>
+              <h2 style="font-size:20px;color:var(--primary);">${isSample ? "Contoh Pengerjaan — Coba Pindahkan 5 Pernyataan" : `Memilih Pernyataan (Halaman ${pageIdx + 1} dari ${pages.length})`}</h2>
               <div style="font-size:13px;color:var(--text-muted);">Geser (<em>drag &amp; drop</em>) atau klik tombol cepat pada 5 pernyataan di kiri ke 3 kotak kanan: <strong>1 Paling</strong>, <strong>3 Netral</strong>, <strong>1 Paling Sedikit</strong>.</div>
             </div>
-            ${isFull ? `<div class="timer-pill" id="oceanTimer">40:00</div>` : ""}
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              ${connPill}
+              ${!isSample ? `<span class="pill" style="background:#f1f5f9;color:var(--primary);">${pageIdx + (pageComplete ? 1 : 0)} of ${pages.length} Sets</span>` : ""}
+              ${!isSample && isFull ? `<div class="timer-pill" id="oceanTimer">40:00</div>` : ""}
+            </div>
           </div>
 
           <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${Math.round(((pageIdx + (pageComplete ? 1 : 0)) / pages.length) * 100)}%"></div></div>
@@ -1570,9 +1644,9 @@
           </div>
 
           <div style="display:flex;justify-content:space-between;margin-top:16px;">
-            <button class="btn btn-outline-dark" id="btnPrevOcean" ${pageIdx === 0 ? "disabled" : ""}>← Sebelumnya</button>
+            <button class="btn btn-outline-dark" id="btnPrevOcean" ${!isSample && pageIdx === 0 ? "disabled" : ""}>← Sebelumnya</button>
             <button class="btn btn-accent" id="btnNextOcean" ${!pageComplete ? "disabled" : ""}>
-              ${pageIdx + 1 < pages.length ? "Halaman Selanjutnya →" : "Selesaikan Personality Test →"}
+              ${isSample ? "Mulai Soal Sebenarnya →" : pageIdx + 1 < pages.length ? "Halaman Selanjutnya →" : "Selesaikan Personality Test →"}
             </button>
           </div>
         </div>
@@ -1606,7 +1680,10 @@
       });
 
       document.getElementById("btnPrevOcean").addEventListener("click", () => {
-        if (pageIdx > 0) {
+        if (isSample) {
+          oceanPhase = "instructions";
+          draw();
+        } else if (pageIdx > 0) {
           pageIdx--;
           draw();
         }
@@ -1614,7 +1691,11 @@
 
       document.getElementById("btnNextOcean").addEventListener("click", () => {
         if (!pageComplete) return;
-        if (pageIdx + 1 < pages.length) {
+        if (isSample) {
+          oceanPhase = "test";
+          if (isFull) startTimer(2400, "oceanTimer", computeOceanResults);
+          draw();
+        } else if (pageIdx + 1 < pages.length) {
           pageIdx++;
           draw();
         } else {
