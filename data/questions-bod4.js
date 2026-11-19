@@ -3,6 +3,19 @@ window.DATA_BOD4 = {
   title: "BOD – 4 (Job Grade 12–14)",
   headcount: 523,
   roleLabel: "Kepala Bagian / Manajer Unit / Technical Head / Branch Manager",
+  successProfile: [
+    "Digital Savvy",
+    "Business Awareness",
+    "Customer Orientation",
+    "Building Partnerships",
+    "Analysis & Judgment",
+    "Managing Work",
+    "Continuous Improvement",
+    "Coaching",
+    "Adaptability",
+    "Valuing Differences",
+    "Work Standards"
+  ],
   methods: [
     { id: "potrai", name: "PotrAI Simulation (180–240 menit)", desc: "Simulasi 5 modul terintegrasi: Email, Chat Roleplay AI, Call/Virtual Meeting, Documents (Analisa Bisnis), & AI Assistant." },
     { id: "cap", name: "CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan terstruktur berbasis pengalaman kerja (Pencapaian, Tantangan, Tindakan, Hasil) & bukti perilaku." },
@@ -323,27 +336,39 @@ window.DATA_BOD4 = {
   cap: [
     {
       id: "bod4-cap1",
-      competency: "Problem Solving & Risk-Based Decision Making",
-      prompt: "Ceritakan satu situasi kerja di mana Anda harus mengambil keputusan sulit antara mengejar target/SLA dan menjaga kepatuhan/akurasi/risiko di unit Anda.",
-      indicators: ["Situasi & dilema spesifik", "Peran pribadi jelas", "Tindakan berbasis data/SOP & komunikasi efektif", "Hasil terukur"]
+      competency: "Analysis & Judgment & Business Awareness",
+      prompt: "Ceritakan satu situasi kompleks di mana Anda harus menganalisis data secara mendalam dan mengambil keputusan tepat antara target bisnis dan risiko/kepatuhan.",
+      indicators: ["Analysis & Judgment (mengurai akar masalah & opsi logis)", "Business Awareness (memahami dampak bisnis & profitabilitas)", "Keputusan tepat waktu berbasis fakta", "Dampak terukur pada kinerja unit"]
     },
     {
       id: "bod4-cap2",
-      competency: "Developing Others & Leading Execution",
-      prompt: "Ceritakan pengalaman Anda saat tim atau anggota tim Anda menghadapi tekanan target atau kendala teknis berat, dan bagaimana Anda membimbing mereka hingga mencapai hasil.",
-      indicators: ["Identifikasi kendala anggota tim", "Tindakan coaching/pembagian kerja konkret", "Membangun akuntabilitas tim", "Peningkatan kinerja terukur"]
+      competency: "Customer Orientation & Building Partnerships",
+      prompt: "Ceritakan pengalaman Anda menangani keluhan atau perbedaan kepentingan yang tajam dengan pelanggan/Bank Mitra/unit lain hingga tercapai solusi kerja sama yang saling menguntungkan.",
+      indicators: ["Customer Orientation (responsif & fokus solusi nasabah/mitra)", "Building Partnerships (kolaborasi lintas unit/eksternal)", "Menjaga kepatuhan tanpa merusak relasi", "Kepuasan mitra/retensi bisnis meningkat"]
     },
     {
       id: "bod4-cap3",
-      competency: "Stakeholder Management & Conflict Resolution",
-      prompt: "Ceritakan pengalaman Anda menyelesaikan konflik atau perbedaan kepentingan yang tajam dengan pihak eksternal (Bank Mitra/Kontraktor/Agen) atau unit internal lain.",
-      indicators: ["Memahami sudut pandang pihak lain", "Negosiasi berbasis fakta & win-win", "Menjaga prinsip tata kelola", "Hubungan kerja tetap produktif"]
+      competency: "Digital Savvy & Continuous Improvement",
+      prompt: "Ceritakan inisiatif perbaikan proses kerja atau pemanfaatan perangkat/sistem digital yang Anda lakukan di unit Anda untuk memangkas hambatan operasional.",
+      indicators: ["Digital Savvy (memanfaatkan sistem/data/otomasi kerja)", "Continuous Improvement (mengidentifikasi & memperbaiki bottleneck)", "Penerapan konsisten di tim", "Efisiensi waktu/SLA/akurasi terukur"]
     },
     {
       id: "bod4-cap4",
-      competency: "Continuous Process Improvement",
-      prompt: "Ceritakan inisiatif perbaikan proses kerja (SOP, alur verifikasi, rekonsiliasi, atau strategi penagihan) yang Anda gagas di unit Anda dan dampak efisiensi/kualitas yang dihasilkan.",
-      indicators: ["Identifikasi bottleneck operasional", "Desain solusi praktis", "Implementasi bersama tim", "Dampak terukur pada SLA/akurasi/recovery"]
+      competency: "Managing Work & Work Standards",
+      prompt: "Ceritakan bagaimana Anda mengelola beban kerja tinggi dengan tenggat ketat di unit Anda sambil memastikan standar kualitas dan kepatuhan (zero defect/audit) tetap terjaga.",
+      indicators: ["Managing Work (penjadwalan prioritas & alokasi tugas tim)", "Work Standards (tidak berkompromi pada kualitas/SOP)", "Monitoring progres harian", "SLA dan standar mutu tercapai"]
+    },
+    {
+      id: "bod4-cap5",
+      competency: "Coaching & Valuing Differences",
+      prompt: "Ceritakan pengalaman Anda membimbing anggota tim dengan latar belakang/gaya kerja yang beragam saat mereka mengalami kendala kinerja atau konflik internal.",
+      indicators: ["Coaching (membimbing langkah teknis & memberi umpan balik konstruktif)", "Valuing Differences (menghargai keberagaman karakter & ide tim)", "Menciptakan kolaborasi yang harmonis", "Peningkatan kompetensi & performa staf"]
+    },
+    {
+      id: "bod4-cap6",
+      competency: "Adaptability",
+      prompt: "Ceritakan situasi ketika terjadi perubahan mendadak (kebijakan baru, sistem baru, atau pergeseran target mendadak) dan bagaimana Anda menyesuaikan strategi tim dengan cepat.",
+      indicators: ["Adaptability (tetap tenang & fleksibel menghadapi perubahan)", "Cepat menyesuaikan rencana kerja", "Membantu tim beradaptasi tanpa panik", "Target tetap tercapai di tengah perubahan"]
     }
   ],
   personality: [

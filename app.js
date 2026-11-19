@@ -491,12 +491,27 @@
       )
       .join("");
 
+    const spHtml =
+      Array.isArray(data.successProfile) && data.successProfile.length
+        ? `
+      <details style="margin-bottom:14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
+        <summary style="font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;">
+          📋 Lihat Success Profile (${data.successProfile.length} Kompetensi ${gradeId === "BOD-5" ? "BUMN" : "IFG"})
+        </summary>
+        <div class="tag-row" style="margin-top:8px;">
+          ${data.successProfile.map((c, i) => `<span class="tag" style="background:#e6f0f7;color:#002B49;">${i + 1}. ${c}</span>`).join("")}
+        </div>
+      </details>
+    `
+        : "";
+
     return `
       <div class="card grade-card">
         <div>
           <span class="grade-badge ${badgeColor}">${gradeRange} • ${headcount}</span>
           <div class="grade-title">${data.title}</div>
           <div class="grade-meta">${data.roleLabel}</div>
+          ${spHtml}
           <ul class="method-list">${methodsHtml}</ul>
         </div>
         <button class="btn btn-primary" data-start-full="${gradeId}">

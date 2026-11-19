@@ -3,6 +3,20 @@ window.DATA_BOD3 = {
   title: "BOD – 3 (Job Grade 15–16)",
   headcount: 145,
   roleLabel: "Kepala Divisi / Kepala Wilayah / Senior Vice President",
+  successProfile: [
+    "Digital Savvy",
+    "Business Acumen",
+    "Customer Orientation",
+    "Building Partnerships",
+    "Decision Making",
+    "Planning & Organizing",
+    "Innovation",
+    "Coaching and Developing Others",
+    "Facilitating Change",
+    "Creating an Inclusive Environment",
+    "Driving for Results",
+    "Inspiring Others"
+  ],
   methods: [
     { id: "potrai", name: "PotrAI Simulation (180–240 menit)", desc: "Simulasi 5 modul terintegrasi: Email, Chat Roleplay AI, Call/Virtual Meeting, Documents (Analisa Bisnis), & AI Assistant." },
     { id: "cap", name: "CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan terstruktur berbasis pengalaman kerja (Pencapaian, Tantangan, Tindakan, Hasil) & bukti perilaku." },
@@ -199,27 +213,39 @@ window.DATA_BOD3 = {
   cap: [
     {
       id: "bod3-cap1",
-      competency: "Strategic Decision Making & Risk Governance",
-      prompt: "Ceritakan pencapaian paling signifikan Anda dalam menyeimbangkan target pertumbuhan bisnis/kinerja unit dengan pengendalian risiko atau kepatuhan di level strategis.",
-      indicators: ["Mengidentifikasi risiko sistemik/portofolio", "Keputusan berbasis data & regulasi", "Kesepakatan lintas pemangku kepentingan", "Dampak terukur pada Loss Ratio / RBC / Laba"]
+      competency: "Business Acumen & Decision Making",
+      prompt: "Ceritakan keputusan bisnis paling strategis yang pernah Anda ambil dalam menyeimbangkan pertumbuhan kinerja/premi dengan pengendalian risiko/profitabilitas unit.",
+      indicators: ["Business Acumen (membaca dampak finansial & pasar)", "Decision Making berbasis data & alternatif terukur", "Mitigasi risiko jangka panjang", "Dampak nyata pada Loss Ratio / RBC / Laba"]
     },
     {
       id: "bod3-cap2",
-      competency: "Driving Transformation & Stakeholder Alignment",
-      prompt: "Ceritakan pengalaman Anda memimpin perubahan kebijakan atau proses kerja yang awalnya ditolak oleh mitra eksternal (Bank/Obligee/Regulator) atau tim internal.",
-      indicators: ["Analisis akar penolakan", "Strategi persuasi & negosiasi eksekutif", "Eksekusi bertahap & monitoring", "Hasil nyata keberlanjutan kerja sama"]
+      competency: "Digital Savvy & Innovation",
+      prompt: "Ceritakan inisiatif pemanfaatan teknologi digital atau inovasi proses/produk baru yang Anda dorong untuk meningkatkan daya saing dan efisiensi organisasi.",
+      indicators: ["Digital Savvy (memanfaatkan data/otomasi/AI/host-to-host)", "Innovation (solusi baru di luar kebiasaan lama)", "Adopsi oleh tim/mitra", "Peningkatan efisiensi/SLA yang terukur"]
     },
     {
       id: "bod3-cap3",
-      competency: "Crisis Management & Financial/Operational Resilience",
-      prompt: "Ceritakan situasi krisis (lonjakan klaim, tekanan likuiditas, potensi fraud besar, atau temuan audit kritis) yang pernah Anda tangani hingga tuntas.",
-      indicators: ["Kecepatan isolasi masalah", "Koordinasi lintas divisi/eksternal", "Tindakan korektif & perbaikan sistem", "Pemulihan finansial/reputasi yang terukur"]
+      competency: "Customer Orientation & Building Partnerships",
+      prompt: "Ceritakan bagaimana Anda membangun atau menyelamatkan kemitraan strategis dengan pelanggan utama/Bank Mitra/regulator yang berdampak besar pada bisnis.",
+      indicators: ["Customer Orientation (memahami kebutuhan inti mitra/nasabah)", "Building Partnerships (solusi win-win jangka panjang)", "Menjaga tata kelola & kepercayaan", "Pertumbuhan bisnis/retensi mitra terukur"]
     },
     {
       id: "bod3-cap4",
-      competency: "Building Strategic Partnerships",
-      prompt: "Ceritakan bagaimana Anda membangun atau menyelamatkan kemitraan strategis yang berdampak besar pada kinerja perusahaan atau unit Anda.",
-      indicators: ["Pemahaman kebutuhan strategis mitra", "Solusi win-win tanpa melanggar tata kelola", "Eksekusi komitmen bersama", "Pertumbuhan premi/recovery/efisiensi terukur"]
+      competency: "Planning & Organizing & Driving for Results",
+      prompt: "Ceritakan pengalaman Anda merancang rencana kerja besar lintas unit yang memiliki tenggat ketat, bagaimana Anda mengalokasikan sumber daya dan memastikan target terlampaui.",
+      indicators: ["Planning & Organizing (prioritas, milestone, & alokasi sumber daya)", "Driving for Results (monitoring KPI & mengatasi hambatan)", "Eksekusi disiplin lintas fungsi", "Target tercapai atau terlampaui secara terukur"]
+    },
+    {
+      id: "bod3-cap5",
+      competency: "Coaching and Developing Others & Inspiring Others",
+      prompt: "Ceritakan pengalaman Anda membimbing manajer/pimpinan di bawah Anda yang sedang menghadapi tekanan berat sehingga mereka berkembang dan terinspirasi mencapai performa puncak.",
+      indicators: ["Coaching and Developing Others (umpan balik & pengembangan kapabilitas)", "Inspiring Others (membangun visi & semangat tim)", "Pendelegasian yang memberdayakan", "Peningkatan kinerja/kesiapan suksesor yang nyata"]
+    },
+    {
+      id: "bod3-cap6",
+      competency: "Facilitating Change & Creating an Inclusive Environment",
+      prompt: "Ceritakan pengalaman Anda memimpin perubahan kebijakan atau transformasi kerja yang awalnya ditolak, sambil tetap merangkul keberagaman pandangan dari berbagai unit/generasi.",
+      indicators: ["Facilitating Change (mengatasi resistensi & komunikasi perubahan)", "Creating an Inclusive Environment (menghargai perspektif beragam secara adil)", "Membangun rasa aman psikologis untuk berpendapat", "Keberhasilan adopsi perubahan secara berkelanjutan"]
     }
   ],
   personality: [

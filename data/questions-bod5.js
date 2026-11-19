@@ -3,6 +3,16 @@ window.DATA_BOD5 = {
   title: "BOD – 5 (Job Grade 8–11)",
   headcount: 253,
   roleLabel: "Officer / Analis Senior / Supervisor Muda",
+  successProfile: [
+    "Digital Savvy",
+    "Customer Orientation",
+    "Collaboration & Building Partnerships",
+    "Applied Analysis & Problem Solving",
+    "Managing Work",
+    "Adaptability & Continuous Learning",
+    "Work Standards",
+    "Integrity & AKHLAK BUMN"
+  ],
   methods: [
     { id: "casestudy", name: "Case Study + Async Presentation (190 menit)", desc: "Menjawab pertanyaan studi kasus secara tertulis, lalu menyampaikan analisis & rekomendasi melalui presentasi rekaman mandiri." },
     { id: "cap", name: "CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan terstruktur berbasis pengalaman kerja (Pencapaian, Tantangan, Tindakan, Hasil) level operasional/officer." },
@@ -108,27 +118,33 @@ window.DATA_BOD5 = {
   cap: [
     {
       id: "bod5-cap1",
-      competency: "Execution Excellence & Quality Orientation",
+      competency: "Work Standards & Managing Work",
       prompt: "Ceritakan pencapaian kerja terbaik Anda saat menangani volume pekerjaan tinggi dengan tetap menjaga ketelitian, akurasi data, dan kepatuhan SOP.",
-      indicators: ["Situasi/beban kerja jelas", "Metode kerja sistematis", "Ketelitian & kepatuhan SOP terjaga", "Hasil terukur (SLA/akurasi)"]
+      indicators: ["Managing Work (pengaturan prioritas & waktu)", "Work Standards (ketelitian & kepatuhan SOP)", "Metode kerja sistematis", "Hasil terukur (SLA/akurasi)"]
     },
     {
       id: "bod5-cap2",
-      competency: "Problem Solving & Collaboration",
-      prompt: "Ceritakan pengalaman Anda menemukan kesalahan atau ketidaksesuaian data/dokumen/angka dalam pekerjaan, lalu bagaimana Anda mengatasinya bersama tim atau mitra terkait.",
-      indicators: ["Kepekaan mendeteksi anomali", "Langkah verifikasi & eskalasi tepat", "Komunikasi kooperatif", "Pencegahan agar tidak terulang"]
+      competency: "Applied Analysis & Problem Solving",
+      prompt: "Ceritakan pengalaman Anda menemukan kesalahan atau ketidaksesuaian data/dokumen/angka dalam pekerjaan, lalu bagaimana Anda menganalisis dan menyelesaikannya hingga tuntas.",
+      indicators: ["Kepekaan mendeteksi anomali", "Analisis penyebab secara runtut", "Langkah perbaikan & eskalasi tepat", "Pencegahan agar tidak terulang"]
     },
     {
       id: "bod5-cap3",
-      competency: "Service Orientation & Partner Coordination",
-      prompt: "Ceritakan pengalaman Anda membantu nasabah, kontraktor, atau unit/mitra lain menyelesaikan kendala layanan yang mendesak tanpa melanggar ketentuan perusahaan.",
-      indicators: ["Responsif terhadap kebutuhan mitra", "Komunikasi jelas & solutif", "Tetap patuh aturan", "Kepuasan mitra terjaga"]
+      competency: "Customer Orientation & Collaboration",
+      prompt: "Ceritakan pengalaman Anda membantu nasabah, mitra, atau rekan lintas unit menyelesaikan kendala layanan yang mendesak secara kolaboratif tanpa melanggar ketentuan.",
+      indicators: ["Customer Orientation (responsif & empatik)", "Collaboration (koordinasi aktif dengan tim/mitra)", "Tetap patuh aturan", "Kepuasan mitra terjaga"]
     },
     {
       id: "bod5-cap4",
-      competency: "Adaptability & Continuous Learning",
-      prompt: "Ceritakan pengalaman Anda saat harus mempelajari sistem, produk, atau aturan baru dalam waktu singkat agar pekerjaan Anda tetap berjalan optimal.",
-      indicators: ["Sikap terbuka terhadap perubahan", "Usaha belajar mandiri/bertanya", "Penerapan cepat di pekerjaan", "Hasil kerja meningkat"]
+      competency: "Digital Savvy & Adaptability",
+      prompt: "Ceritakan pengalaman Anda saat harus mempelajari aplikasi digital, sistem kerja, atau aturan baru dalam waktu singkat agar produktivitas Anda tetap optimal.",
+      indicators: ["Digital Savvy (adaptif dengan perangkat digital)", "Adaptability & Continuous Learning", "Penerapan cepat di pekerjaan harian", "Hasil kerja meningkat"]
+    },
+    {
+      id: "bod5-cap5",
+      competency: "Integrity & AKHLAK BUMN",
+      prompt: "Ceritakan situasi di mana Anda menghadapi tekanan untuk mengambil jalan pintas atau melonggarkan prosedur, dan bagaimana Anda mempertahankan integritas serta nilai AKHLAK.",
+      indicators: ["Teguh pada nilai Amanah & Integritas", "Komunikasi sopan namun tegas", "Mencari solusi legal/sesuai SOP", "Kepercayaan atasan/mitra terjaga"]
     }
   ],
   psychometric: [
