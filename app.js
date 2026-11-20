@@ -1504,47 +1504,166 @@
     }
 
     function renderCapEval(item) {
-      const hasFirstPerson = /\bsaya\b/i.test(essayText);
-      const hasNumbers = /\d+/.test(essayText);
-      const hasResultWord = /(hasil|dampak|meningkat|turun|berhasil|tercapai|efisien|solusi)/i.test(essayText);
-      const totalWords = essayText.split(/\s+/).filter(Boolean).length;
-      const score = Math.min(97, Math.max(52, (totalWords >= 70 ? 48 : totalWords >= 40 ? 36 : 24) + (hasFirstPerson ? 18 : 6) + (hasNumbers ? 16 : 6) + (hasResultWord ? 14 : 6)));
+      const cleanTxt = essayText.trim();
+      const lowerTxt = cleanTxt.toLowerCase();
+      const wordList = cleanTxt.split(/\s+/).filter(Boolean);
+      const totalWords = wordList.length;
+      const uniqueRatio = totalWords > 0 ? new Set(wordList.map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))).size / totalWords : 0;
+      const isSpammy = totalWords >= 12 && uniqueRatio < 0.42;
+
+      // 1. Evaluasi 4 Pilar STAR secara terpisah
+      const hasSituation = /(ketika|saat|pada tahun|di unit|di cabang|menghadapi|terjadi|kendala|masalah|tantangan|kondisi|lonjakan|krisis|proyek|penurunan|selisih|backlog)/i.test(lowerTxt);
+      const hasTask = /(peran|tanggung jawab|ditugaskan|sebagai|memimpin|menangani|tugas|kewajiban|diamanahkan|koordinator|pic|target saya|harus memastikan)/i.test(lowerTxt);
+      const hasFirstPerson = /\bsaya\b/i.test(lowerTxt);
+      const hasActionVerb = /(melakukan|menyusun|membuat|mengajak|berdiskusi|membimbing|menganalisis|menerapkan|mengkoordinasi|mengevaluasi|memperbaiki|memberikan|merancang|memetakan|memutuskan|mengubah|memastikan|mengedukasi|mengembangkan|mengarahkan|memonitor|mengusulkan|memfasilitasi)/i.test(lowerTxt);
+      const hasAction = hasFirstPerson && hasActionVerb;
+      const hasNumbers = /\d+/.test(cleanTxt);
+      const hasResultWord = /(hasil|dampak|meningkat|turun|berhasil|tercapai|efisien|solusi|selesai|membaik|hemat|naik|berkurang|zero|tepat waktu|sla|produktif|puas|tuntas)/i.test(lowerTxt);
+      const hasResult = hasResultWord && hasNumbers;
+
+      // 2. Evaluasi Relevansi terhadap Indikator Kompetensi Soal (Anti Jawaban Melenceng)
+      const compSynonyms = {
+        coaching: ["bimbing", "latih", "mentor", "umpan balik", "feedback", "kembang", "diskusi", "arahkan", "staf", "tim", "performa", "evaluasi", "sharing"],
+        valuing: ["beda", "beragam", "karakter", "pendapat", "perspektif", "inklusif", "hargai", "latar belakang", "harmonis", "terbuka", "masukan"],
+        differences: ["beda", "beragam", "karakter", "pendapat", "perspektif", "inklusif", "hargai", "latar belakang", "harmonis"],
+        digital: ["digital", "aplikasi", "sistem", "otomasi", "otomatis", "dashboard", "excel", "data", "teknologi", "online", "software", "web", "template"],
+        customer: ["pelanggan", "nasabah", "klien", "mitra", "layanan", "komplain", "keluhan", "puas", "solusi", "kebutuhan", "respon"],
+        business: ["biaya", "efisien", "efisiensi", "untung", "profit", "margin", "anggaran", "sumber daya", "target", "pendapatan", "nilai", "bisnis", "hemat"],
+        analysis: ["analisis", "analisa", "data", "akar", "penyebab", "evaluasi", "alternatif", "opsi", "risiko", "hitung", "banding", "temuan"],
+        judgment: ["keputusan", "putus", "pertimbang", "alternatif", "risiko", "solusi", "tepat", "prioritas"],
+        decision: ["keputusan", "putus", "rekomendasi", "risiko", "dampak", "pertimbang", "pilih", "langkah"],
+        managing: ["prioritas", "jadwal", "waktu", "timeline", "deadline", "sla", "target", "bagi", "tugas", "pantau", "monitoring", "sistematis"],
+        planning: ["rencana", "prioritas", "jadwal", "timeline", "pic", "koordinasi", "alokasi", "target", "monitoring"],
+        collaboration: ["kolaborasi", "kerja sama", "kerjasama", "koordinasi", "sinergi", "lintas", "tim", "bersama", "libatkan", "mitra"],
+        partnerships: ["mitra", "kerja sama", "kerjasama", "kolaborasi", "sinergi", "lintas", "stakeholder", "win-win"],
+        quality: ["teliti", "akurat", "akurasi", "standar", "sop", "cek", "verifikasi", "error", "kesalahan", "kualitas", "audit", "zero"],
+        adaptability: ["adaptasi", "ubah", "perubahan", "mendadak", "fleksibel", "sesuai", "baru", "cepat", "transisi"],
+        improvement: ["perbaikan", "tingkat", "inovasi", "baru", "efektif", "cepat", "pangkas", "proses", "solusi", "efisien"],
+        change: ["perubahan", "transformasi", "transisi", "sosialisasi", "dukung", "adaptasi", "komunikasi", "resistensi"],
+        inspiring: ["inspirasi", "motivasi", "semangat", "visi", "teladan", "dorong", "apresiasi", "tim"],
+        driving: ["target", "hasil", "kpi", "capai", "tuntas", "eksekusi", "komitmen", "prestasi"],
+        innovation: ["inovasi", "ide", "baru", "kreatif", "terobosan", "solusi", "perbaikan", "uji coba"]
+      };
+
+      const stopWords = new Set(["yang", "dan", "atau", "dengan", "untuk", "dalam", "pada", "dari", "secara", "agar", "serta", "dapat", "oleh", "tetap", "lebih", "sangat", "kerja", "tugas", "hasil", "jelas", "nyata", "tepat", "baik"]);
+
+      const indicatorResults = (item.indicators || []).map((ind) => {
+        const indLower = ind.toLowerCase();
+        const tokens = indLower
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((t) => t.length >= 4 && !stopWords.has(t));
+
+        const expanded = new Set(tokens);
+        Object.keys(compSynonyms).forEach((k) => {
+          if (indLower.includes(k) || item.competency.toLowerCase().includes(k)) {
+            compSynonyms[k].forEach((syn) => expanded.add(syn));
+          }
+        });
+
+        let hits = 0;
+        expanded.forEach((kw) => {
+          if (lowerTxt.includes(kw)) hits++;
+        });
+        // Indikator tentang angka/terukur wajib ada angka
+        const needsMetric = /(terukur|angka|sla|biaya|efisiensi|metrik|zero-error)/i.test(indLower);
+        const needsSelf = /(pribadi|'saya'|"saya")/i.test(indLower);
+        let matched = hits >= 2;
+        if (needsMetric) matched = hasNumbers && (hasResultWord || hits >= 1);
+        if (needsSelf) matched = hasFirstPerson && hasActionVerb;
+
+        return { text: ind, matched };
+      });
+
+      const matchedIndCount = indicatorResults.filter((r) => r.matched).length;
+      const totalIndCount = Math.max(1, indicatorResults.length);
+
+      // 3. Perhitungan Skor Transparan: STAR (/45) + Relevansi Indikator (/35) + Elaborasi (/20)
+      const starScore =
+        (hasSituation ? 10 : 3) +
+        (hasTask ? 8 : 2) +
+        (hasAction ? 14 : hasFirstPerson ? 8 : 2) +
+        (hasResult ? 13 : hasResultWord || hasNumbers ? 7 : 2); // max 45
+
+      const relScore = Math.round((matchedIndCount / totalIndCount) * 35); // max 35
+      const elabScore = totalWords >= 80 ? 20 : totalWords >= 55 ? 16 : totalWords >= 35 ? 11 : 6; // max 20
+
+      let score = starScore + relScore + elabScore;
+      if (matchedIndCount === 0) score = Math.min(score, 48); // penalti keras jika melenceng dari kompetensi
+      if (isSpammy) score = Math.min(score, 32); // penalti keras jika spam/pengulangan
+      score = Math.min(98, Math.max(20, score));
+
       scores[idx] = score;
       if (!state.flowResults.capTelemetry) state.flowResults.capTelemetry = [];
       state.flowResults.capTelemetry[idx] = {
         competency: item.competency,
         words: totalWords,
+        hasSituation,
+        hasTask,
         hasFirstPerson,
+        hasAction,
         hasNumbers,
         hasResultWord,
+        matchedIndCount,
+        totalIndCount,
+        isSpammy,
         score
       };
+
+      const probingList = [];
+      if (isSpammy) probingList.push("Terdeteksi banyak pengulangan kata. Tuliskan pengalaman kerja nyata dengan kalimat yang runtut dan variatif.");
+      if (matchedIndCount === 0) probingList.push(`Isi cerita Anda belum relevan dengan kompetensi <strong>${item.competency}</strong>. Fokuskan cerita pada perilaku yang sesuai dengan indikator kompetensi di atas.`);
+      if (!hasSituation) probingList.push("<strong>Situation (S):</strong> Jelaskan konteks masalah/tantangan nyata yang terjadi (kapan, di unit mana, apa kendalanya).");
+      if (!hasTask) probingList.push("<strong>Task (T):</strong> Pertegas peran dan tanggung jawab spesifik Anda dalam situasi tersebut.");
+      if (!hasFirstPerson) probingList.push("<strong>Action (A):</strong> Perjelas kontribusi pribadi Anda menggunakan kata <em>'Saya...'</em> (bukan hanya 'kami/tim').");
+      else if (!hasActionVerb) probingList.push("<strong>Action (A):</strong> Sebutkan langkah konkret yang Anda lakukan (misalnya: saya menganalisis, saya membimbing, saya merancang).");
+      if (!hasNumbers) probingList.push("<strong>Result (R — Metrik):</strong> Cantumkan angka dampak terukur (persentase perbaikan, rupiah, jumlah berkas, atau SLA hari).");
+      else if (!hasResultWord) probingList.push("<strong>Result (R — Dampak):</strong> Tegaskan hasil akhir yang berubah setelah tindakan Anda (meningkat/menurun/berhasil).");
+
+      const missedInds = indicatorResults.filter((r) => !r.matched).map((r) => r.text);
+      if (missedInds.length > 0 && matchedIndCount > 0) {
+        probingList.push(`Indikator kompetensi yang belum tampak jelas di tulisan Anda: <em>${missedInds.join("; ")}</em>.`);
+      }
 
       return `
         <div class="feedback-box">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi Bukti Perilaku CAP</strong>
-              <div style="font-size:13px;color:var(--text-muted);">
-                Jumlah kata: ${totalWords} • Kepemilikan tindakan ("Saya"): ${hasFirstPerson ? "Jelas ✓" : "Perlu dipertegas"} • Hasil terukur (angka): ${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}
+              <strong>Evaluasi Bukti Perilaku CAP — Analisis STAR &amp; Relevansi Kompetensi</strong>
+              <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">
+                Jumlah kata: <strong>${totalWords}</strong> • Indikator terbukti: <strong>${matchedIndCount}/${totalIndCount}</strong> • Rincian: STAR ${starScore}/45 · Relevansi ${relScore}/35 · Elaborasi ${elabScore}/20
               </div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
+          <div class="tag-row" style="margin-top:10px;">
+            <span class="tag" style="background:${hasSituation ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasSituation ? "#065f46" : "#991b1b"};">${hasSituation ? "✓" : "✕"} S: Situasi</span>
+            <span class="tag" style="background:${hasTask ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasTask ? "#065f46" : "#991b1b"};">${hasTask ? "✓" : "✕"} T: Peran/Tugas</span>
+            <span class="tag" style="background:${hasAction ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasAction ? "#065f46" : "#991b1b"};">${hasAction ? "✓" : "✕"} A: Tindakan ("Saya")</span>
+            <span class="tag" style="background:${hasResult ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasResult ? "#065f46" : "#991b1b"};">${hasResult ? "✓" : "✕"} R: Hasil + Angka</span>
+          </div>
         </div>
         <div class="rubric-grid">
-          ${item.indicators.map((ind) => `<div class="rubric-item"><label>Indikator Kompetensi</label><div style="font-size:13px;">${ind}</div></div>`).join("")}
+          ${indicatorResults
+            .map(
+              (r) => `
+            <div class="rubric-item" style="border-left:3px solid ${r.matched ? "#10b981" : "#f59e0b"};">
+              <label style="color:${r.matched ? "#047857" : "#b45309"};">${r.matched ? "✓ Terbukti di Jawaban" : "✕ Belum Tampak"}</label>
+              <div style="font-size:13px;">${r.text}</div>
+            </div>
+          `
+            )
+            .join("")}
         </div>
         ${
-          !hasFirstPerson || !hasNumbers
+          probingList.length > 0
             ? `<div class="feedback-box warn" style="margin-top:14px;">
-                 <strong>Catatan Probing Asesor DDI:</strong>
-                 <ul style="margin-left:18px;margin-top:6px;">
-                   ${!hasFirstPerson ? "<li>Perjelas kontribusi pribadi Anda menggunakan kata <em>'Saya'</em> (bukan hanya 'kami/tim').</li>" : ""}
-                   ${!hasNumbers ? "<li>Cantumkan angka dampak terukur (persentase perbaikan, rupiah, SLA hari, atau jumlah berkas).</li>" : ""}
+                 <strong>Catatan Probing Asesor DDI (Berdasarkan Tulisan Anda):</strong>
+                 <ul style="margin-left:18px;margin-top:6px;font-size:13px;line-height:1.6;">
+                   ${probingList.map((p) => `<li>${p}</li>`).join("")}
                  </ul>
                </div>`
-            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Bukti Perilaku Lengkap:</strong> Jawaban Anda sudah konkret mencakup situasi, tindakan pribadi, dan hasil terukur sesuai standar DDI.</div>`
+            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Bukti Perilaku STAR &amp; Kompetensi Sangat Lengkap:</strong> Seluruh elemen Situation, Task, Action ("Saya"), Result terukur, dan indikator kompetensi <strong>${item.competency}</strong> sudah terbukti di tulisan Anda.</div>`
         }
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextCap">
