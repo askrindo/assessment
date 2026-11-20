@@ -4,259 +4,320 @@ window.DATA_BOD5 = {
   headcount: 253,
   roleLabel: "Officer / Analis Senior / Supervisor Muda",
   successProfile: [
-    "Digital Savvy",
+    "Digital Awareness",
+    "Business Acumen",
     "Customer Orientation",
-    "Collaboration & Building Partnerships",
-    "Applied Analysis & Problem Solving",
+    "Fostering Collaboration",
+    "Analysis & Judgment",
     "Managing Work",
-    "Adaptability & Continuous Learning",
-    "Work Standards",
-    "Integrity & AKHLAK BUMN"
+    "Continuous Improvement",
+    "Adaptability",
+    "Valuing Differences",
+    "Quality Orientation"
   ],
   methods: [
-    { id: "psychometric", name: "Pre-Assessment 1: Psychometric Test (120 menit)", desc: "Mengukur 3 aspek: Kemampuan Berpikir (kognitif), Karakteristik Kepribadian, dan Faktor Motivasi kerja." },
-    { id: "cap", name: "Pre-Assessment 2: CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan pengalaman kerja spesifik (situasi, peran, tindakan, hasil) level operasional/officer." },
-    { id: "casestudy", name: "Main Assessment: Case Study + Async Presentation (190 menit)", desc: "Menjawab studi kasus tertulis lalu menyampaikan analisis & rekomendasi lewat rekaman video mandiri." }
+    { id: "psychometric", name: "Pre-Assessment 1: Psychometric Test (120 menit)", desc: "Mengukur 3 aspek: Kemampuan Berpikir (kognitif), Karakteristik Kepribadian, dan Faktor Motivasi sesuai 10 Kompetensi IFG BOD-5." },
+    { id: "cap", name: "Pre-Assessment 2: CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan pengalaman kerja spesifik (situasi, peran, tindakan, hasil) merujuk pada 10 Kompetensi IFG BOD-5." },
+    { id: "casestudy", name: "Main Assessment: Case Study + Async Presentation (190 menit)", desc: "Menjawab studi kasus jabatan di perusahaan fiktif secara tertulis lalu menyampaikan analisis & rekomendasi lewat rekaman video mandiri." }
   ],
   casestudy: [
+    {
+      id: "bod5-gen1",
+      units: ["Umum (Generik PortrAI)", "Semua"],
+      unit: "Umum (Generik PortrAI)",
+      title: "Officer Operasional Layanan — PT Nusantara Logistik Digital: Backlog Pesanan, Error Input Manual, & Komplain Mitra",
+      prepSec: 600,
+      presentSec: 240,
+      brief: `
+        <h4>Peran &amp; Latar Belakang Kasus (Perusahaan Fiktif)</h4>
+        <p>Anda menjabat sebagai <strong>Operations &amp; Service Officer (BOD-5)</strong> di <strong>PT Nusantara Logistik Digital</strong>. Minggu ini perusahaan baru saja memigrasikan sistem pencatatan pesanan ke aplikasi web baru, namun terjadi lonjakan 240 pesanan korporat (SLA 2 hari kerja): <strong>165 pesanan datanya lengkap</strong>, sedangkan <strong>75 pesanan tidak lengkap/duplikat</strong> akibat mitra masih mengirim format Excel lama.</p>
+        <p>Di tim Anda terdapat 3 staf dengan latar belakang berbeda (1 staf senior yang terbiasa cara manual dan skeptis terhadap aplikasi baru, 1 staf junior yang sangat mahir digital namun kurang teliti, serta 1 staf lapangan). Tingkat kesalahan input (<em>error rate</em>) naik menjadi 9% (standar kualitas &lt; 1%) dan biaya lembur melonjak 28%, sementara 2 klien utama sudah mengirim komplain keterlambatan.</p>
+      `,
+      writtenQuestions: [
+        "1. (Analysis & Judgment + Managing Work + Business Acumen) Bagaimana Anda menganalisis akar masalah, membagi prioritas 165 pesanan lengkap vs 75 pesanan tidak lengkap, serta menekan biaya lembur 28%?",
+        "2. (Customer Orientation + Quality Orientation) Langkah konkret apa yang Anda ambil untuk menangani komplain 2 klien utama dan menurunkan error rate dari 9% ke < 1%?",
+        "3. (Digital Awareness + Continuous Improvement + Fostering Collaboration + Valuing Differences + Adaptability) Bagaimana Anda menyatukan gaya kerja 3 staf yang berbeda agar adaptif terhadap aplikasi baru dan mencegah masalah berulang?"
+      ],
+      keywords: ["prioritas", "sla", "triase", "klien", "komplain", "error", "standar", "kualitas", "checklist", "digital", "otomatisasi", "efisiensi", "lembur", "kolaborasi", "senior", "junior", "adaptasi", "perbaikan"],
+      rubric: [
+        "Analysis & Judgment + Managing Work (Triase & Prioritas SLA)",
+        "Business Acumen & Quality Orientation (Efisiensi Biaya & Error < 1%)",
+        "Customer Orientation (Penanganan Komplain & Nilai Tambah Klien)",
+        "Digital Awareness & Continuous Improvement (Optimalisasi Sistem Baru)",
+        "Fostering Collaboration, Valuing Differences & Adaptability (Sinergi Tim Beragam)"
+      ],
+      benchmark: "Prioritaskan 165 pesanan lengkap agar SLA 2 hari terjaga, sambil mengirim notifikasi standar format ke mitra untuk 75 pesanan tidak lengkap (Managing Work & Customer Orientation). Pasangkan staf senior yang teliti dengan staf junior yang mahir digital untuk saling mendampingi (Valuing Differences & Fostering Collaboration), terapkan template validasi otomatis + double-check (Digital Awareness, Continuous Improvement & Quality Orientation) untuk menekan error < 1% dan memangkas lembur 28% (Business Acumen)."
+    },
+    {
+      id: "bod5-gen2",
+      units: ["Umum (Generik PortrAI)", "Semua"],
+      unit: "Umum (Generik PortrAI)",
+      title: "Senior Business Analyst — PT Terra Retail Indonesia: Penurunan Efisiensi Cabang & Perubahan Kebijakan Mendadak",
+      prepSec: 600,
+      presentSec: 240,
+      brief: `
+        <h4>Peran &amp; Latar Belakang Kasus (Perusahaan Fiktif)</h4>
+        <p>Anda menjabat sebagai <strong>Senior Analyst (BOD-5)</strong> di <strong>PT Terra Retail Indonesia</strong>. Manajemen tiba-tiba mempercepat peluncuran program layanan <em>Same-Day Delivery</em> dari bulan depan menjadi minggu depan karena pergerakan kompetitor. Dari data 6 gerai, ditemukan: biaya operasional naik 15% akibat stok tidak akurat (selisih pencatatan 6%), tingkat kepuasan pelanggan turun dari 92% ke 81%, dan tim gudang merasa tidak dilibatkan oleh tim pemasaran.</p>
+      `,
+      writtenQuestions: [
+        "1. (Analysis & Judgment + Business Acumen) Berdasarkan data di atas, apa akar masalah utama dan bagaimana prioritas efisiensi biaya 15% sebelum peluncuran minggu depan?",
+        "2. (Adaptability + Managing Work + Quality Orientation) Bagaimana rencana kerja 7 hari Anda menghadapi percepatan jadwal mendadak tanpa mengorbankan akurasi stok?",
+        "3. (Fostering Collaboration + Valuing Differences + Customer Orientation + Digital Awareness + Continuous Improvement) Bagaimana Anda menjembatani tim gudang dan tim pemasaran serta memanfaatkan alat digital untuk menaikkan kepuasan pelanggan kembali ke > 90%?"
+      ],
+      keywords: ["akar masalah", "efisiensi", "biaya", "stok", "akurasi", "adaptasi", "timeline", "kolaborasi", "gudang", "pemasaran", "pelanggan", "kepuasan", "digital", "dashboard", "perbaikan", "standar"],
+      rubric: [
+        "Analysis & Judgment & Business Acumen (Analisis Data & Efisiensi 15%)",
+        "Adaptability & Managing Work (Rencana Kerja Cepat 7 Hari)",
+        "Quality Orientation (Akurasi Stok & Standar Layanan)",
+        "Fostering Collaboration & Valuing Differences (Sinergi Gudang–Pemasaran)",
+        "Customer Orientation, Digital Awareness & Continuous Improvement"
+      ],
+      benchmark: "Lakukan audit cepat stok berbasis dashboard real-time di 6 gerai (Digital Awareness & Quality Orientation) untuk memangkas selisih 6% dan kebocoran biaya 15% (Business Acumen). Gelar sinkronisasi lintas fungsi gudang & pemasaran dengan menghargai masukan operasional lapangan (Fostering Collaboration & Valuing Differences), susun checklist peluncuran 7 hari yang realistis (Adaptability & Managing Work), serta aktifkan notifikasi status pesanan transparan untuk memulihkan kepuasan pelanggan > 90% (Customer Orientation & Continuous Improvement)."
+    },
     {
       id: "bod5-uw1",
       units: ["Underwriting", "Technical Head", "Manajemen Risiko"],
       unit: "Underwriting",
-      title: "Verifikasi Kelayakan Polis Suretyship (Bid Bond & Performance Bond) Menjelang Batas SLA",
+      title: "Verifikasi Kelayakan Dokumen Menjelang Batas SLA & Kontrol Kualitas Data",
       prepSec: 600,
       presentSec: 240,
       brief: `
         <h4>Latar Belakang Kasus</h4>
-        <p>Anda adalah Officer Underwriting (BOD-5). Hari ini masuk 45 berkas permohonan <em>Suretyship (Bid Bond)</em> dengan SLA maksimal 2 hari kerja: 35 berkas lengkap &amp; valid, sedangkan 10 berkas laporan keuangannya belum <em>update</em> dan 2 di antaranya memiliki catatan tunggakan subrogasi lama.</p>
+        <p>Anda adalah Officer Underwriting (BOD-5). Hari ini masuk 45 berkas permohonan penjaminan dengan SLA maksimal 2 hari kerja: 35 berkas lengkap &amp; valid, sedangkan 10 berkas laporan keuangannya belum <em>update</em> dan 2 di antaranya memiliki catatan tunggakan lama.</p>
       `,
       writtenQuestions: [
         "1. Bagaimana Anda memprioritaskan 45 berkas tersebut dan menangani 10 berkas yang tidak lengkap / punya catatan tunggakan?",
-        "2. Checklist kontrol apa yang Anda usulkan kepada tim pemasaran agar berkas masuk selalu lengkap?"
+        "2. Perbaikan proses digital dan checklist kontrol kualitas apa yang Anda usulkan bersama tim pemasaran agar berkas masuk selalu lengkap?"
       ],
-      keywords: ["prioritas", "bid bond", "sla", "lengkap", "pending", "laporan keuangan", "subrogasi", "checklist", "underwriting"],
-      rubric: ["Ketajaman Analisis Risiko Underwriting", "Relevansi Solusi Triase", "Kualitas Rekomendasi Checklist", "Struktur Presentasi Asinkron"],
-      benchmark: "Segera proses 35 berkas lengkap agar SLA 2 hari terpenuhi; tahan 10 berkas tidak lengkap dengan notifikasi kekurangan dokumen dan blokir 2 berkas yang masih punya tunggakan subrogasi; serta terapkan checklist pra-kirim."
+      keywords: ["prioritas", "sla", "lengkap", "pending", "laporan keuangan", "tunggakan", "checklist", "digital", "kolaborasi", "kualitas"],
+      rubric: ["Analysis & Judgment", "Managing Work & Quality Orientation", "Digital Awareness & Continuous Improvement", "Fostering Collaboration & Customer Orientation"],
+      benchmark: "Segera proses 35 berkas lengkap agar SLA 2 hari terpenuhi; tahan 10 berkas tidak lengkap dengan notifikasi kekurangan dokumen dan blokir 2 berkas yang masih punya tunggakan; serta terapkan checklist digital pra-kirim bersama tim pemasaran."
     },
     {
       id: "bod5-kl1",
       units: ["Klaim", "Technical Head"],
       unit: "Klaim",
-      title: "Penanganan Backlog 240 Berkas Klaim KUR Mikro & Dokumen Tidak Lengkap",
+      title: "Penanganan Backlog 240 Berkas Klaim & Koordinasi Dokumen Tidak Lengkap",
       prepSec: 600,
       presentSec: 240,
       brief: `
         <h4>Latar Belakang Kasus</h4>
-        <p>Di unit Klaim Cabang terdapat 240 berkas klaim KUR Mikro masuk bulan ini (SLA 10 hari kerja): 165 berkas lengkap, dan 75 berkas tanpa surat tagih/NPF dari bank. Ada 3 analis dengan waktu verifikasi rata-rata 25 menit/berkas.</p>
+        <p>Di unit Klaim Cabang terdapat 240 berkas masuk bulan ini (SLA 10 hari kerja): 165 berkas lengkap, dan 75 berkas kurang dokumen pendukung. Ada 3 analis dengan waktu verifikasi rata-rata 25 menit/berkas.</p>
       `,
       writtenQuestions: [
         "1. Hitung kebutuhan waktu verifikasi 165 berkas lengkap oleh 3 analis dan atur pembagian kerjanya.",
-        "2. Bagaimana penanganan 75 berkas tidak lengkap sesuai mekanisme stop-clock SLA pada PKS?"
+        "2. Bagaimana penanganan 75 berkas tidak lengkap secara transparan bersama mitra sesuai SLA?"
       ],
-      keywords: ["prioritas", "sla", "triase", "lengkap", "stop-clock", "pending", "bank mitra", "kapasitas", "verifikasi"],
-      rubric: ["Perhitungan Beban Kerja & SLA", "Kepatuhan Prosedur Klaim & PKS", "Koordinasi Bank Mitra", "Struktur Presentasi Asinkron"],
-      benchmark: "165 berkas x 25 menit = 4.125 menit (68,75 jam total atau ~23 jam/analis, selesai dalam ~3–4 hari kerja). Prioritaskan 165 berkas lengkap, dan terbitkan konfirmasi kekurangan dokumen (stop-clock SLA) untuk 75 berkas."
+      keywords: ["prioritas", "sla", "triase", "lengkap", "stop-clock", "pending", "mitra", "kapasitas", "verifikasi", "kualitas"],
+      rubric: ["Analysis & Judgment & Managing Work", "Quality Orientation", "Customer Orientation & Fostering Collaboration", "Continuous Improvement"],
+      benchmark: "165 berkas x 25 menit = 4.125 menit (68,75 jam total atau ~23 jam/analis, selesai dalam ~3–4 hari kerja). Prioritaskan 165 berkas lengkap, dan terbitkan konfirmasi kekurangan dokumen (stop-clock SLA) untuk 75 berkas disertai panduan kelengkapan digital."
     },
     {
       id: "bod5-sub1",
-      units: ["Subrogasi"],
-      unit: "Subrogasi",
-      title: "Rekonsiliasi Selisih Data Setoran Subrogasi Rp 185 Juta & Prioritas Penagihan",
+      units: ["Subrogasi", "Keuangan"],
+      unit: "Subrogasi / Keuangan",
+      title: "Rekonsiliasi Selisih Data Setoran Rp 185 Juta & Prioritas Penagihan",
       prepSec: 600,
       presentSec: 240,
       brief: `
         <h4>Latar Belakang Kasus</h4>
-        <p>Saat rekonsiliasi bulanan dengan Bank Mitra Z, ditemukan 14 rekening debitur subrogasi yang sudah menyetor angsuran pemulihan di bank sebesar Rp 185 Juta namun belum tercatat di sistem kita, serta 40 debitur subrogasi menunggak di atas 12 bulan dengan total nilai Rp 1,4 Miliar.</p>
+        <p>Saat rekonsiliasi bulanan dengan Mitra Z, ditemukan 14 rekening yang sudah menyetor sebesar Rp 185 Juta namun belum tercatat di sistem kita, serta 40 akun menunggak di atas 12 bulan dengan total nilai Rp 1,4 Miliar.</p>
       `,
       writtenQuestions: [
         "1. Bagaimana langkah verifikasi dan rekonsiliasi Anda atas selisih Rp 185 Juta tersebut?",
-        "2. Bagaimana Anda menyusun prioritas penagihan 40 debitur menunggak tersebut?"
+        "2. Bagaimana Anda menyusun prioritas penagihan 40 akun menunggak serta perbaikan sistem pencatatannya?"
       ],
-      keywords: ["rekonsiliasi", "rekening koran", "berita acara", "pareto", "prioritas", "subrogasi", "cut-off", "monitoring"],
-      rubric: ["Ketelitian Rekonsiliasi Subrogasi", "Strategi Prioritas Penagihan", "Kontrol Preventif", "Kejelasan Presentasi"],
-      benchmark: "Cocokkan mutasi rekening koran & bukti setor dengan Bank Mitra lalu buat Berita Acara Rekonsiliasi dan jadwal cut-off mingguan; urutkan 40 debitur berdasarkan nilai terbesar (Pareto) untuk kunjungan & penagihan intensif."
-    },
-    {
-      id: "bod5-keu1",
-      units: ["Keuangan"],
-      unit: "Keuangan",
-      title: "Penyelesaian Selisih Kas/Bank, Verifikasi Pembayaran Klaim, & Aging Piutang Premi",
-      prepSec: 600,
-      presentSec: 240,
-      brief: `
-        <h4>Latar Belakang Kasus</h4>
-        <p>Sebagai Officer Keuangan Cabang, Anda menemukan: (1) Terdapat 12 bukti pembayaran premi dari agen senilai Rp 240 Juta yang belum teridentifikasi nomor polisnya di rekening koran, (2) 5 berkas pembayaran klaim KUR senilai Rp 480 Juta mendesak ditransfer hari ini, namun 1 berkas nomor rekening bank mitranya berbeda dari data PKS.</p>
-      `,
-      writtenQuestions: [
-        "1. Apa keputusan Anda terhadap 5 berkas transfer klaim (khususnya 1 berkas yang nomor rekeningnya berbeda)?",
-        "2. Bagaimana langkah Anda mengidentifikasi Rp 240 Juta dana mengendap (unidentified receipt) agar pencatatan piutang premi akurat?"
-      ],
-      keywords: ["rekonsiliasi", "rekening koran", "unidentified", "tunda", "konfirmasi", "pks", "voucher", "piutang premi", "audit", "kontrol"],
-      rubric: ["Ketelitian & Kontrol Pembayaran Keuangan", "Kepatuhan Verifikasi Rekening PKS", "Penyelesaian Unidentified Receipt", "Kejelasan Penyampaian Presentasi"],
-      benchmark: "Proses transfer 4 berkas klaim yang rekeningnya cocok sesuai PKS, dan tunda 1 berkas yang berbeda rekeningnya untuk konfirmasi tertulis resmi dari Bank Mitra. Untuk Rp 240 Juta unidentified receipt, lakukan konfirmasi bukti transfer ke agen/pemasaran dan terapkan kewajiban mencantumkan nomor nota debit/polis pada berita transfer."
+      keywords: ["rekonsiliasi", "rekening koran", "berita acara", "pareto", "prioritas", "cut-off", "monitoring", "digital", "efisiensi", "kualitas"],
+      rubric: ["Quality Orientation & Analysis & Judgment", "Business Acumen & Managing Work", "Digital Awareness & Continuous Improvement", "Fostering Collaboration"],
+      benchmark: "Cocokkan mutasi rekening koran & bukti setor lalu buat Berita Acara Rekonsiliasi dan jadwal cut-off mingguan otomatis; urutkan 40 akun berdasarkan nilai terbesar (Pareto) untuk penagihan intensif guna memaksimalkan pemulihan kas."
     },
     {
       id: "bod5-bm1",
       units: ["Branch Manager", "Bisnis & Pemasaran"],
       unit: "Bisnis & Pemasaran / Branch Manager",
-      title: "Peningkatan Konversi Polis Asuransi Umum bagi Debitur KUR Naik Kelas",
+      title: "Peningkatan Konversi Layanan & Optimalisasi Kemitraan",
       prepSec: 600,
       presentSec: 240,
       brief: `
         <h4>Latar Belakang Kasus</h4>
-        <p>Dari 1.200 debitur KUR Kecil yang naik kelas di cabang Anda, baru <strong>12%</strong> yang memiliki Asuransi Kebakaran / Harta Benda untuk ruko dan stok barang. Padahal dalam setahun terjadi 9 kasus kebakaran pasar yang menyebabkan debitur gagal bayar.</p>
+        <p>Dari 1.200 klien potensial di wilayah Anda, baru <strong>12%</strong> yang memanfaatkan layanan perlindungan lanjutan. Padahal dalam setahun terakhir banyak klien mengalami gangguan operasional yang berdampak pada kelancaran usaha mereka.</p>
       `,
       writtenQuestions: [
-        "1. Jelaskan akar masalah rendahnya penetrasi Asuransi Umum pada debitur naik kelas tersebut.",
-        "2. Rancang langkah konkret bersama RM Bank Mitra dan target konversi realistis untuk 6 bulan ke depan."
+        "1. Jelaskan akar masalah rendahnya konversi tersebut berdasarkan kebutuhan klien.",
+        "2. Rancang langkah konkret berbasis digital bersama tim mitra dengan target realistis 6 bulan ke depan."
       ],
-      keywords: ["edukasi", "bundling", "rm", "bank", "premi", "risiko", "umkm", "kebakaran", "simulasi", "target", "monitoring"],
-      rubric: ["Ketajaman Analisis Kebutuhan UMKM", "Relevansi Solusi Edukasi & Simulasi Premi", "Sinergi RM Bank Mitra", "Kejelasan Struktur Presentasi"],
-      benchmark: "Mengedukasi debitur dengan simulasi premi harian yang ringan dibanding risiko kerugian aset, membekali RM Bank Mitra dengan brosur 1 halaman & kalkulator premi cepat, serta memprioritaskan klaster pasar berisiko tinggi dengan target bertahap dari 12% ke 30% dalam 6 bulan."
+      keywords: ["edukasi", "bundling", "mitra", "risiko", "simulasi", "target", "monitoring", "digital", "kolaborasi", "pelanggan"],
+      rubric: ["Business Acumen & Analysis & Judgment", "Customer Orientation", "Digital Awareness & Continuous Improvement", "Fostering Collaboration & Managing Work"],
+      benchmark: "Edukasi klien dengan simulasi manfaat yang mudah dipahami, bekali tim mitra dengan kalkulator digital 1 halaman, serta prioritaskan klaster berisiko tinggi dengan target bertahap dari 12% ke 30% dalam 6 bulan."
     }
   ],
   cap: [
     {
       id: "bod5-cap1",
-      competency: "Work Standards & Managing Work",
-      prompt: "Ceritakan pencapaian kerja terbaik Anda saat menangani volume pekerjaan tinggi dengan tetap menjaga ketelitian, akurasi data, dan kepatuhan SOP.",
-      indicators: ["Managing Work (pengaturan prioritas & waktu)", "Work Standards (ketelitian & kepatuhan SOP)", "Metode kerja sistematis", "Hasil terukur (SLA/akurasi)"]
+      competency: "Digital Awareness & Continuous Improvement",
+      prompt: "Ceritakan pengalaman nyata Anda ketika memanfaatkan teknologi digital, aplikasi, atau perangkat baru untuk memperbaiki proses kerja yang sebelumnya lambat/manual hingga efektivitas tim meningkat.",
+      indicators: [
+        "Digital Awareness (memahami & menerapkan teknologi digital dalam pekerjaan)",
+        "Continuous Improvement (mengidentifikasi peluang perbaikan & menerapkan solusi)",
+        "Tindakan pribadi jelas ('Saya...')",
+        "Hasil efisiensi waktu/biaya terukur"
+      ]
     },
     {
       id: "bod5-cap2",
-      competency: "Applied Analysis & Problem Solving",
-      prompt: "Ceritakan pengalaman Anda menemukan kesalahan atau ketidaksesuaian data/dokumen/angka dalam pekerjaan, lalu bagaimana Anda menganalisis dan menyelesaikannya hingga tuntas.",
-      indicators: ["Kepekaan mendeteksi anomali", "Analisis penyebab secara runtut", "Langkah perbaikan & eskalasi tepat", "Pencegahan agar tidak terulang"]
+      competency: "Business Acumen & Analysis & Judgment",
+      prompt: "Ceritakan pengalaman Anda mengumpulkan dan menganalisis data/informasi untuk memecahkan masalah operasional serta mengoptimalkan penggunaan sumber daya atau meningkatkan efisiensi/keuntungan unit kerja.",
+      indicators: [
+        "Analysis & Judgment (mengumpulkan data, menganalisis akar masalah & memilih alternatif tepat)",
+        "Business Acumen (mengoptimalkan sumber daya, efisiensi & nilai bisnis)",
+        "Dasar pertimbangan logis & kuantitatif",
+        "Dampak bisnis/efisiensi terukur"
+      ]
     },
     {
       id: "bod5-cap3",
-      competency: "Customer Orientation & Collaboration",
-      prompt: "Ceritakan pengalaman Anda membantu nasabah, mitra, atau rekan lintas unit menyelesaikan kendala layanan yang mendesak secara kolaboratif tanpa melanggar ketentuan.",
-      indicators: ["Customer Orientation (responsif & empatik)", "Collaboration (koordinasi aktif dengan tim/mitra)", "Tetap patuh aturan", "Kepuasan mitra terjaga"]
+      competency: "Customer Orientation & Quality Orientation",
+      prompt: "Ceritakan pengalaman Anda menangani kebutuhan atau keluhan pelanggan/mitra yang menuntut layanan cepat, namun Anda tetap memastikan ketelitian, ketepatan, dan kesesuaian standar kualitas pekerjaan.",
+      indicators: [
+        "Customer Orientation (memahami kebutuhan pelanggan & memberi solusi bernilai tambah)",
+        "Quality Orientation (memastikan ketelitian, ketepatan & kepatuhan standar kualitas)",
+        "Langkah pengecekan kualitas yang sistematis",
+        "Kepuasan pelanggan & zero-error terukur"
+      ]
     },
     {
       id: "bod5-cap4",
-      competency: "Digital Savvy & Adaptability",
-      prompt: "Ceritakan pengalaman Anda saat harus mempelajari aplikasi digital, sistem kerja, atau aturan baru dalam waktu singkat agar produktivitas Anda tetap optimal.",
-      indicators: ["Digital Savvy (adaptif dengan perangkat digital)", "Adaptability & Continuous Learning", "Penerapan cepat di pekerjaan harian", "Hasil kerja meningkat"]
+      competency: "Managing Work & Adaptability",
+      prompt: "Ceritakan situasi ketika terjadi perubahan mendadak pada target, aturan, atau situasi pekerjaan Anda, dan bagaimana Anda menyesuaikan diri serta mengatur ulang prioritas, waktu, dan sumber daya agar target tetap tercapai.",
+      indicators: [
+        "Managing Work (mengatur prioritas, waktu & sumber daya efektif)",
+        "Adaptability (menyesuaikan diri secara efektif terhadap perubahan situasi/tuntutan)",
+        "Tetap tenang & produktif di bawah tekanan perubahan",
+        "Target selesai tepat waktu (SLA tercapai)"
+      ]
     },
     {
       id: "bod5-cap5",
-      competency: "Integrity & AKHLAK BUMN",
-      prompt: "Ceritakan situasi di mana Anda menghadapi tekanan untuk mengambil jalan pintas atau melonggarkan prosedur, dan bagaimana Anda mempertahankan integritas serta nilai AKHLAK.",
-      indicators: ["Teguh pada nilai Amanah & Integritas", "Komunikasi sopan namun tegas", "Mencari solusi legal/sesuai SOP", "Kepercayaan atasan/mitra terjaga"]
+      competency: "Fostering Collaboration & Valuing Differences",
+      prompt: "Ceritakan pengalaman Anda bekerja sama dengan rekan atau pihak lintas unit yang memiliki latar belakang, sudut pandang, atau gaya kerja berbeda dari Anda untuk menyelesaikan suatu target bersama.",
+      indicators: [
+        "Fostering Collaboration (membangun kerja sama, melibatkan pihak lain & berkontribusi aktif)",
+        "Valuing Differences (menghargai & memanfaatkan perbedaan latar belakang/perspektif individu)",
+        "Komunikasi inklusif & menjembatani perbedaan",
+        "Tujuan bersama berhasil tercapai"
+      ]
     }
   ],
   psychometric: [
     {
-      aspect: "Kemampuan Berpikir (Numerik)",
+      aspect: "Business Acumen & Numerik Efisiensi",
       id: "psy-1",
-      question: "Sebuah proyek Rp 8 Miliar membutuhkan Bid Bond 2% dari nilai proyek. Jika tarif IJP 0,25% dari nilai jaminan dan biaya admin Rp 50.000, berapa total biaya yang dibayar kontraktor?",
-      options: ["Rp 450.000", "Rp 400.000", "Rp 250.000", "Rp 500.000"],
+      question: "Sebuah unit menghabiskan biaya operasional Rp 80.000.000/bulan. Setelah menerapkan sistem otomatis, biaya turun 15% namun ada biaya langganan software Rp 2.500.000/bulan. Berapa penghematan bersih per bulan?",
+      options: ["Rp 9.500.000", "Rp 12.000.000", "Rp 14.500.000", "Rp 8.000.000"],
       answer: 0,
-      explanation: "Bid Bond = 2% x Rp 8 M = Rp 160 Juta. IJP = 0,25% x Rp 160 Juta = Rp 400.000. Total = Rp 450.000."
+      explanation: "Penurunan 15% × Rp 80 Juta = Rp 12.000.000. Dikurangi biaya software Rp 2.500.000 = penghematan bersih Rp 9.500.000/bulan."
     },
     {
-      aspect: "Kemampuan Berpikir (Numerik Klaim)",
+      aspect: "Analysis & Judgment (Numerik Kapasitas)",
       id: "psy-2",
-      question: "Plafon KUR Rp 50.000.000 dengan porsi penjaminan 70%. Saat macet, sisa pokok Rp 30.000.000 dan bunga dijamin Rp 1.500.000. Berapa klaim maksimal yang dibayar?",
-      options: ["Rp 22.050.000", "Rp 31.500.000", "Rp 21.000.000", "Rp 35.000.000"],
+      question: "Sebuah tim berisi 3 analis memproses 180 dokumen dengan rata-rata 20 menit/dokumen. Jika waktu kerja efektif 6 jam/hari per analis, berapa hari kerja yang dibutuhkan untuk menyelesaikan seluruh dokumen?",
+      options: ["3,33 hari (4 hari kerja)", "2 hari kerja", "5 hari kerja", "6 hari kerja"],
       answer: 0,
-      explanation: "Total kewajiban = 30.000.000 + 1.500.000 = Rp 31.500.000. Porsi 70% = Rp 22.050.000."
+      explanation: "Total waktu = 180 × 20 = 3.600 menit (60 jam). Kapasitas tim/hari = 3 × 6 = 18 jam/hari. Waktu = 60 / 18 = 3,33 hari kerja."
     },
     {
-      aspect: "Kemampuan Berpikir (Ketelitian Data)",
+      aspect: "Quality Orientation (Ketelitian Data)",
       id: "psy-3",
-      question: "Manakah data yang 100% IDENTIK dengan referensi: `POL-KUR-2026-08914 | PT Karya Mandiri | Rp 450.000.000`?",
+      question: "Manakah data yang 100% IDENTIK dengan referensi: `INV-NLD-2026-08914 | PT Karya Mandiri | Rp 450.000.000`?",
       options: [
-        "POL-KUR-2026-08914 | PT Karya Mandiri | Rp 450.000.000",
-        "POL-KUR-2026-08941 | PT Karya Mandiri | Rp 450.000.000",
-        "POL-KUR-2026-08914 | PT Karya Mandri | Rp 450.000.000",
-        "POL-KUR-2026-08914 | PT Karya Mandiri | Rp 45.000.000"
+        "INV-NLD-2026-08914 | PT Karya Mandiri | Rp 450.000.000",
+        "INV-NLD-2026-08941 | PT Karya Mandiri | Rp 450.000.000",
+        "INV-NLD-2026-08914 | PT Karya Mandri | Rp 450.000.000",
+        "INV-NLD-2026-08914 | PT Karya Mandiri | Rp 45.000.000"
       ],
       answer: 0,
-      explanation: "Hanya opsi pertama yang identik di nomor polis, nama, dan nominal."
+      explanation: "Quality Orientation menuntut ketelitian penuh: hanya opsi pertama yang identik pada nomor dokumen, nama perusahaan, dan nominal."
     },
     {
-      aspect: "Kemampuan Berpikir (Ketelitian Rekening)",
+      aspect: "Quality Orientation (Ketelitian Rekening)",
       id: "psy-4",
-      question: "Manakah nomor rekening yang SAMA PERSIS dengan referensi: `BNI 0845-9910-2231 a.n. Asuransi Kredit`?",
+      question: "Manakah nomor rekening yang SAMA PERSIS dengan referensi: `BANK-M 0845-9910-2231 a.n. Nusantara Logistik`?",
       options: [
-        "BNI 0845-9910-2231 a.n. Asuransi Kredit",
-        "BNI 0845-9910-2321 a.n. Asuransi Kredit",
-        "BNI 0845-9901-2231 a.n. Asuransi Kredit",
-        "BRI 0845-9910-2231 a.n. Asuransi Kredit"
+        "BANK-M 0845-9910-2231 a.n. Nusantara Logistik",
+        "BANK-M 0845-9910-2321 a.n. Nusantara Logistik",
+        "BANK-M 0845-9901-2231 a.n. Nusantara Logistik",
+        "BANK-N 0845-9910-2231 a.n. Nusantara Logistik"
       ],
       answer: 0,
-      explanation: "Perhatikan urutan angka 9910-2231 dan nama bank BNI."
+      explanation: "Perhatikan urutan angka 9910-2231 serta kode bank BANK-M yang persis sesuai referensi."
     },
     {
-      aspect: "Kemampuan Berpikir (Logika Pola)",
+      aspect: "Analysis & Judgment (Logika Pola)",
       id: "psy-5",
       question: "Deret angka: 4, 9, 19, 39, 79, ... Angka selanjutnya adalah?",
       options: ["159", "149", "169", "139"],
       answer: 0,
-      explanation: "Pola: (angka x 2) + 1 -> (79 x 2) + 1 = 159."
+      explanation: "Pola: (angka × 2) + 1 → (79 × 2) + 1 = 159."
     },
     {
-      aspect: "Kemampuan Berpikir (Logika Deduktif)",
+      aspect: "Analysis & Judgment (Logika Deduktif)",
       id: "psy-6",
-      question: "Semua polis Asuransi Kebakaran > Rp 2 M wajib survei fisik. Polis Ruko A bernilai Rp 1,8 M dan Polis Gudang B bernilai Rp 2,5 M. Kesimpulan yang pasti benar:",
+      question: "Semua pengadaan di atas Rp 200 Juta wajib melalui evaluasi komite. Proyek A bernilai Rp 180 Juta dan Proyek B bernilai Rp 250 Juta. Kesimpulan yang pasti benar:",
       options: [
-        "Polis Gudang B wajib survei fisik berdasarkan aturan batas > Rp 2 M.",
-        "Baik Ruko A maupun Gudang B wajib survei fisik.",
-        "Polis Ruko A dilarang terbit tanpa survei fisik.",
-        "Hanya polis di bawah Rp 2 M yang wajib survei fisik."
+        "Proyek B wajib melalui evaluasi komite sesuai ketentuan batas > Rp 200 Juta.",
+        "Baik Proyek A maupun Proyek B wajib melalui evaluasi komite.",
+        "Proyek A tidak boleh dikerjakan tanpa evaluasi komite.",
+        "Hanya proyek di bawah Rp 200 Juta yang wajib evaluasi komite."
       ],
       answer: 0,
-      explanation: "Gudang B (Rp 2,5 M > Rp 2 M) memenuhi syarat wajib survei fisik."
+      explanation: "Proyek B (Rp 250 Juta > Rp 200 Juta) memenuhi syarat wajib evaluasi komite."
     },
     {
-      aspect: "Kemampuan Berpikir (Manajemen Waktu)",
+      aspect: "Managing Work (Manajemen Waktu & Prioritas)",
       id: "psy-7",
-      question: "Waktu kerja efektif 420 menit. Anda memverifikasi 12 berkas (@20 menit) dan membuat 1 laporan (90 menit). Berapa menit tersisa untuk follow-up subrogasi?",
+      question: "Waktu kerja efektif 420 menit. Anda memverifikasi 12 berkas (@20 menit) dan membuat 1 laporan evaluasi (90 menit). Berapa menit tersisa untuk rapat koordinasi?",
       options: ["90 menit", "60 menit", "120 menit", "75 menit"],
       answer: 0,
-      explanation: "Terpakai = (12 x 20) + 90 = 330 menit. Sisa = 420 - 330 = 90 menit."
+      explanation: "Terpakai = (12 × 20) + 90 = 330 menit. Sisa waktu = 420 - 330 = 90 menit."
     },
     {
-      aspect: "Karakteristik Kepribadian (Integritas)",
+      aspect: "Digital Awareness & Continuous Improvement",
       id: "psy-8",
-      question: "Anda menemukan selisih Rp 250.000 pada berkas yang sudah disetujui sistem. Rekan menyarankan mengabaikannya karena kecil. Sikap Anda?",
+      question: "Proses rekap laporan mingguan di unit Anda masih memakan waktu 6 jam secara manual dan sering salah hitung. Anda melihat fitur otomatisasi di aplikasi perusahaan yang belum dipakai tim. Sikap terbaik Anda?",
       options: [
-        "Mencatat dan mengonfirmasi selisih tersebut sesuai prosedur agar data audit akurat.",
-        "Mengikuti saran rekan agar pekerjaan cepat selesai.",
-        "Mengubah angka manual supaya cocok.",
-        "Membiarkan berkas tanpa melapor."
+        "Mencoba menyusun template otomatisasi di aplikasi tersebut, mengujinya agar akurat, lalu membagikannya ke tim untuk memangkas waktu kerja.",
+        "Tetap memakai cara manual agar tidak perlu repot mengubah kebiasaan tim.",
+        "Menunggu sampai divisi IT membuatkan sistem baru meski belum ada jadwalnya.",
+        "Memakai fitur baru hanya untuk pekerjaan pribadi tanpa memberi tahu rekan lain."
       ],
       answer: 0,
-      explanation: "Integritas dan akurasi data adalah standar utama operasional."
+      explanation: "Menggabungkan Digital Awareness dan Continuous Improvement: proaktif memanfaatkan teknologi digital untuk meningkatkan efektivitas kerja bersama."
     },
     {
-      aspect: "Karakteristik Kepribadian (Kerja Sama)",
+      aspect: "Fostering Collaboration & Valuing Differences",
       id: "psy-9",
-      question: "Rekan satu tim Anda sedang sakit sehingga 20 berkasnya terancam melewati SLA hari ini. Apa yang Anda lakukan?",
+      question: "Dalam rapat proyek lintas unit, seorang rekan dari divisi lain yang jauh lebih junior mengusulkan pendekatan berbeda dari kebiasaan lama tim Anda. Bagaimana respon terbaik Anda?",
       options: [
-        "Berkoordinasi dengan atasan untuk membagi prioritas berkas tersebut bersama tim agar SLA unit terjaga.",
-        "Fokus pada berkas sendiri saja karena itu bukan tanggung jawab Anda.",
-        "Menunda semua berkas rekan tersebut hingga dia masuk kembali.",
-        "Meminta mitra membatalkan pengajuan sementara."
+        "Mendengarkan perspektifnya secara terbuka, menggali kelebihan usulannya, dan memadukannya dengan pengalaman tim untuk solusi terbaik.",
+        "Langsung menolak karena merasa pengalaman tim lama jauh lebih teruji.",
+        "Mengabaikan usulannya agar rapat cepat selesai.",
+        "Meminta rekan tersebut mengerjakan sendiri idenya di luar koordinasi tim."
       ],
       answer: 0,
-      explanation: "Kolaborasi dan kepedulian terhadap SLA tim mencerminkan kerja sama yang solid."
+      explanation: "Valuing Differences & Fostering Collaboration ditunjukkan dengan menghargai keragaman perspektif/latar belakang dan merangkulnya demi tujuan bersama."
     },
     {
-      aspect: "Faktor Motivasi (Orientasi Prestasi & Adaptasi)",
+      aspect: "Customer Orientation & Adaptability",
       id: "psy-10",
-      question: "Ketika sistem kerja baru diterapkan di kantor dan awalnya terasa lebih lambat bagi Anda, apa yang paling mendorong tindakan Anda?",
+      question: "Dua jam sebelum jadwal pengiriman laporan ke pelanggan utama, pelanggan meminta penambahan ringkasan perbandingan biaya secara mendadak. Apa tindakan terbaik Anda?",
       options: [
-        "Mempelajari alur sistem baru dan mencari cara agar target akurasi serta SLA tetap tercapai.",
-        "Kembali memakai cara manual secara diam-diam agar target harian aman.",
-        "Menunggu sampai rekan lain menguasainya terlebih dahulu.",
-        "Mengeluhkan sistem baru karena menghambat rutinitas."
+        "Menyesuaikan prioritas segera, mengonfirmasi ruang lingkup yang dibutuhkan pelanggan, dan menyiapkan ringkasan akurat tepat waktu tanpa mengorbankan kualitas data.",
+        "Menolak permintaan tersebut karena tidak ada dalam jadwal awal.",
+        "Mengirimkan angka perkiraan kasar tanpa dicek ulang agar cepat selesai.",
+        "Menunda pengiriman seluruh laporan sampai minggu depan tanpa memberi kabar."
       ],
       answer: 0,
-      explanation: "Motivasi berprestasi dan adaptabilitas tinggi ditunjukkan dengan kemauan menguasai sistem baru."
+      explanation: "Mencerminkan Adaptability, Customer Orientation, dan Quality Orientation secara seimbang: responsif terhadap perubahan kebutuhan pelanggan dengan tetap menjaga ketelitian."
     }
   ]
 };

@@ -224,7 +224,7 @@
 
             <div style="margin-top:24px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.16);display:flex;justify-content:space-between;font-size:12px;color:#bae6fd;">
               <span>SIMETA • BOD-3, BOD-4 &amp; BOD-5</span>
-              <span>PortrAI • DIVE V.2 • CAP • Kompetensi IFG &amp; BUMN</span>
+              <span>PortrAI • DIVE V.2 • CAP • Kompetensi IFG</span>
             </div>
           </div>
 
@@ -510,7 +510,7 @@
         ? `
       <details style="margin-bottom:14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
         <summary style="font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;">
-          📋 Lihat Success Profile (${data.successProfile.length} Kompetensi ${gradeId === "BOD-5" ? "BUMN" : "IFG"})
+          📋 Lihat Success Profile (${data.successProfile.length} Kompetensi IFG)
         </summary>
         <div class="tag-row" style="margin-top:8px;">
           ${data.successProfile.map((c, i) => `<span class="tag" style="background:#e6f0f7;color:#002B49;">${i + 1}. ${c}</span>`).join("")}
@@ -2186,7 +2186,7 @@
         <div class="memo-box" style="margin-top:22px;border-left-color:var(--accent);background:linear-gradient(135deg,#fffbf5 0%,#f8fafc 100%);">
           <h3 style="font-size:16px;color:var(--primary);margin-bottom:6px;">🎯 Tips &amp; Trik Strategi Pengerjaan Asesmen yang Benar (${state.selectedGrade})</h3>
           <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
-            Panduan praktis berikut merangkum pola perilaku yang dinilai tinggi oleh asesor pada Assessment Center resmi (DDI × IFG/BUMN):
+            Panduan praktis berikut merangkum pola perilaku yang dinilai tinggi oleh asesor pada Assessment Center resmi (DDI × IFG):
           </p>
           <div class="grid-2" style="gap:12px;">
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
