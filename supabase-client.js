@@ -234,8 +234,85 @@
 
     async fetchResults(limit = 50, nipFilter = null) {
       try {
-        let q = `assessment_results?select=*&status=neq.PRE_ASSESSMENT_PROGRESS&order=created_at.desc&limit=${limit}`;
+        let q = `assessment_results?select=*&status=neq.PRE_ASSESSMENT_PROGRESS&status=neq.MEDIA_RECORDING&order=created_at.desc&limit=${limit}`;
         if (nipFilter) q += `&participant_nip=eq.${encodeURIComponent(nipFilter)}`;
+        const data = await rest(q);
+        return { ok: true, data: data || [] };
+      } catch (err) {
+        return { ok: false, data: [], reason: err.message };
+      }
+    },
+
+    async uploadMedia(blob, fileName) {
+      const safeName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/assessment-media/${safeName}`;
+      try {
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": blob.type || "video/webm",
+            "x-upsert": "true"
+          },
+          body: blob
+        });
+        if (res.ok) {
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/assessment-media/${safeName}`;
+          return { ok: true, url: publicUrl, storage: "cloud" };
+        }
+      } catch {}
+
+      // Fallback otomatis jika bucket Storage belum dibuat: simpan dataUrl terkompresi (jika <= 2.5MB)
+      if (blob.size <= 2.5 * 1024 * 1024) {
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          return { ok: true, url: dataUrl, storage: "inline_db" };
+        } catch {}
+      }
+      return { ok: false, url: null, reason: "Bucket 'assessment-media' belum dibuat di Supabase Storage atau ukuran file > 2.5MB." };
+    },
+
+    async saveMediaRecord({ nip, fullName, grade, unit, activity, mediaType, mediaUrl, transcript, durationSec, score, aiMetrics }) {
+      const payload = {
+        activity,
+        mediaType,
+        mediaUrl,
+        transcript: transcript || "",
+        durationSec: durationSec || 0,
+        aiMetrics: aiMetrics || null,
+        savedAt: new Date().toISOString()
+      };
+      try {
+        const data = await rest("assessment_results", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify([
+            {
+              participant_name: fullName || "Peserta",
+              participant_nip: nip || "-",
+              grade: grade || "BOD-5",
+              unit: unit || "Umum",
+              score: Math.round(score || 0),
+              status: "MEDIA_RECORDING",
+              details: payload
+            }
+          ])
+        });
+        return { ok: true, data };
+      } catch (err) {
+        return { ok: false, reason: err.message };
+      }
+    },
+
+    async fetchMediaRecords(limit = 100) {
+      try {
+        const q = `assessment_results?select=*&status=eq.MEDIA_RECORDING&order=created_at.desc&limit=${limit}`;
         const data = await rest(q);
         return { ok: true, data: data || [] };
       } catch (err) {

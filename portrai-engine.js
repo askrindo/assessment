@@ -20,6 +20,10 @@
     let callTriggerTimeout = null;
     let callDurationInterval = null;
     let callCamStream = null;
+    let callAudioRecorder = null;
+    let callAudioStream = null;
+    let callSpeechRec = null;
+    let isRecordingCallAudio = false;
     let selectedVoiceName = "";
 
     function startCallElapsedTimer() {
@@ -236,6 +240,8 @@
         callEnded: false,
         callSeconds: 0,
         callResponse: "",
+        callAudioUrl: null,
+        callAudioSavedLabel: "",
         callTranscript: [{ speaker: item.call.partnerName, text: item.call.prompt }],
         docView: "files", // files | editor
         openedFileIdx: 0,
@@ -645,8 +651,18 @@
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
                   <button class="btn btn-outline btn-sm" id="btnToggleCallCam">${callCamStream ? "Matikan Kamera" : "📹 Kamera"}</button>
                   <button class="btn btn-outline btn-sm" id="btnReplayVoice">🔊 Dengar Suara</button>
-                  <button class="btn btn-outline btn-sm" id="btnVoiceDictate">🎙️ Dikte Suara</button>
+                  <button class="btn ${isRecordingCallAudio ? "btn-danger" : "btn-outline"} btn-sm" id="btnVoiceDictate">
+                    ${isRecordingCallAudio ? "⏹ Stop Rekam Suara" : "🎙️ Rekam Suara + Transkrip"}
+                  </button>
                 </div>
+                ${
+                  ws.callAudioUrl
+                    ? `<div style="margin-top:8px;text-align:center;">
+                         <audio controls src="${ws.callAudioUrl}" style="width:100%;height:32px;"></audio>
+                         <div style="font-size:11px;color:#86efac;margin-top:3px;">${ws.callAudioSavedLabel || "✓ Rekaman suara siap"}</div>
+                       </div>`
+                    : ""
+                }
                 <div style="margin-top:8px;text-align:center;">
                   <select id="voiceSelect" class="select-input" style="min-width:200px;padding:4px 8px;font-size:11px;background:rgba(255,255,255,0.1);color:#e2e8f0;border-color:rgba(255,255,255,0.2);">
                     ${
@@ -927,20 +943,83 @@
 
       const btnVoice = document.getElementById("btnVoiceDictate");
       if (btnVoice) {
-        btnVoice.addEventListener("click", () => {
-          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-          if (!SR) {
-            alert("Browser Anda belum mendukung dikte suara. Silakan ketik langsung pada kotak arahan.");
-            return;
+        btnVoice.addEventListener("click", async () => {
+          saveDrafts();
+          if (!isRecordingCallAudio) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              callAudioStream = stream;
+              const chunks = [];
+              const opts = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+                ? { mimeType: "audio/webm;codecs=opus", audioBitsPerSecond: 48000 }
+                : { audioBitsPerSecond: 48000 };
+              callAudioRecorder = new MediaRecorder(stream, opts);
+              callAudioRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+              };
+              callAudioRecorder.onstop = async () => {
+                if (callSpeechRec) {
+                  try { callSpeechRec.stop(); } catch {}
+                  callSpeechRec = null;
+                }
+                const blob = new Blob(chunks, { type: "audio/webm" });
+                ws.callAudioUrl = URL.createObjectURL(blob);
+                ws.callAudioSavedLabel = "⏳ Mengunggah rekaman suara ke server...";
+                stream.getTracks().forEach((t) => t.stop());
+                callAudioStream = null;
+                draw();
+
+                if (window.SupabaseService && state.currentUser) {
+                  const up = await window.SupabaseService.uploadMedia(blob, `call_${state.currentUser.nip}_${gradeId}.webm`);
+                  if (up.ok && up.url) {
+                    ws.callAudioUrl = up.url;
+                    ws.callAudioSavedLabel = up.storage === "cloud" ? "✓ Rekaman suara tersimpan di Cloud Server" : "✓ Rekaman suara tersimpan di Database";
+                    await window.SupabaseService.saveMediaRecord({
+                      nip: state.currentUser.nip,
+                      fullName: state.currentUser.full_name,
+                      grade: gradeId,
+                      unit: state.currentUser.unit || state.unitFilter,
+                      activity: `PortrAI Call — ${item.title}`,
+                      mediaType: "audio",
+                      mediaUrl: up.url,
+                      transcript: ws.callResponse || ws.callTranscript.filter((t) => t.speaker === "Anda").map((t) => t.text).join(" | "),
+                      durationSec: ws.callSeconds,
+                      score: 0,
+                      aiMetrics: { pickupDelaySec: ws.callPickupDelaySec, turns: ws.callTranscript.filter((t) => t.speaker === "Anda").length }
+                    });
+                  } else {
+                    ws.callAudioSavedLabel = "⚠ Tersimpan lokal (klik Unduh atau aktifkan bucket Storage)";
+                  }
+                  draw();
+                }
+              };
+              callAudioRecorder.start();
+              isRecordingCallAudio = true;
+
+              const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+              if (SR) {
+                try {
+                  callSpeechRec = new SR();
+                  callSpeechRec.lang = "id-ID";
+                  callSpeechRec.continuous = true;
+                  callSpeechRec.interimResults = false;
+                  callSpeechRec.onresult = (ev) => {
+                    const said = ev.results[ev.results.length - 1][0].transcript;
+                    ws.callResponse = (ws.callResponse ? ws.callResponse + " " : "") + said;
+                    const box = document.getElementById("callRespInput");
+                    if (box) box.value = ws.callResponse;
+                  };
+                  callSpeechRec.start();
+                } catch {}
+              }
+              draw();
+            } catch {
+              alert("Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat mengetik arahan di kotak Transcript.");
+            }
+          } else {
+            if (callAudioRecorder && callAudioRecorder.state !== "inactive") callAudioRecorder.stop();
+            isRecordingCallAudio = false;
           }
-          const rec = new SR();
-          rec.lang = "id-ID";
-          rec.onresult = (ev) => {
-            const said = ev.results[0][0].transcript;
-            const box = document.getElementById("callRespInput");
-            if (box) box.value = (box.value ? box.value + " " : "") + said;
-          };
-          rec.start();
         });
       }
 

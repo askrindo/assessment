@@ -68,3 +68,16 @@ values (
   true
 )
 on conflict (nip) do nothing;
+
+-- 4. Storage Bucket untuk Rekaman Video Presentasi & Suara Telepon
+insert into storage.buckets (id, name, public)
+values ('assessment-media', 'assessment-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Allow public upload assessment-media" on storage.objects;
+create policy "Allow public upload assessment-media"
+  on storage.objects for insert to anon with check (bucket_id = 'assessment-media');
+
+drop policy if exists "Allow public read assessment-media" on storage.objects;
+create policy "Allow public read assessment-media"
+  on storage.objects for select to anon using (bucket_id = 'assessment-media');

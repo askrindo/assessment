@@ -2124,7 +2124,7 @@
     draw();
   }
 
-  // ======================== 6. SELF-PRESENTATION (BOD-5) ========================
+  // ======================== 6. SELF-PRESENTATION + AI VIDEO ANALYZER (BOD-5) ========================
   function renderSelfPresentation(gradeId) {
     clearTimer();
     const data = GRADES[gradeId];
@@ -2139,19 +2139,106 @@
     let scriptText = "";
     let recordedVideoUrl = null;
     let recordedAudioUrl = null;
+    let uploadedMediaUrl = null;
+    let uploadStatusLabel = "";
     let activeStream = null;
     let mediaRecorder = null;
+    let speechRec = null;
+    let aiInterval = null;
     let isRecording = false;
     let recMode = "video";
+    let recStartedAt = 0;
+    let recDurationSec = 0;
     let evaluated = false;
+
+    // Telemetri AI Video Real-Time (Kontak Mata, Ekspresi, Stabilitas Postur)
+    const aiTrack = {
+      framesChecked: 0,
+      eyeContactFrames: 0,
+      confidentFrames: 0,
+      tenseFrames: 0,
+      exprCounts: {},
+      centerXs: []
+    };
+
+    async function loadPresAiModels() {
+      if (!window.faceapi) return false;
+      try {
+        const uri = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+        if (!window.faceapi.nets.tinyFaceDetector.isLoaded) {
+          await window.faceapi.nets.tinyFaceDetector.loadFromUri(uri);
+        }
+        if (!window.faceapi.nets.faceExpressionNet.isLoaded) {
+          await window.faceapi.nets.faceExpressionNet.loadFromUri(uri);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function stopAiScan() {
+      if (aiInterval) {
+        clearInterval(aiInterval);
+        aiInterval = null;
+      }
+    }
+
+    function computeAiDeliveryMetrics(words) {
+      const dur = Math.max(1, recDurationSec);
+      const wpm = words > 0 && recDurationSec >= 5 ? Math.round((words / dur) * 60) : 0;
+      const eyeContactPct = aiTrack.framesChecked > 0 ? Math.round((aiTrack.eyeContactFrames / aiTrack.framesChecked) * 100) : null;
+      const confidentPct = aiTrack.framesChecked > 0 ? Math.round((aiTrack.confidentFrames / aiTrack.framesChecked) * 100) : null;
+
+      let dominantExpr = "Tidak terukur";
+      const exprEntries = Object.entries(aiTrack.exprCounts).sort((a, b) => b[1] - a[1]);
+      if (exprEntries[0]) {
+        const mapExpr = {
+          neutral: "Tenang & Profesional",
+          happy: "Positif & Antusias",
+          surprised: "Ekspresif",
+          fearful: "Tegang / Gugup",
+          sad: "Kurang Berenergi",
+          angry: "Terlalu Tegas / Tegang",
+          disgusted: "Kurang Nyaman"
+        };
+        dominantExpr = mapExpr[exprEntries[0][0]] || exprEntries[0][0];
+      }
+
+      let stabilityLabel = "Tidak terukur";
+      if (aiTrack.centerXs.length >= 3) {
+        let totalMove = 0;
+        for (let i = 1; i < aiTrack.centerXs.length; i++) {
+          totalMove += Math.abs(aiTrack.centerXs[i] - aiTrack.centerXs[i - 1]);
+        }
+        const avgMove = totalMove / (aiTrack.centerXs.length - 1);
+        stabilityLabel = avgMove < 0.035 ? "Sangat Stabil" : avgMove < 0.075 ? "Cukup Stabil" : "Banyak Bergerak / Gelisah";
+      }
+
+      const wpmLabel =
+        wpm === 0
+          ? "Belum terukur"
+          : wpm >= 100 && wpm <= 160
+          ? `${wpm} WPM (Tempo Ideal)`
+          : wpm > 160
+          ? `${wpm} WPM (Terlalu Cepat)`
+          : `${wpm} WPM (Agak Lambat)`;
+
+      return { durationSec: recDurationSec, wpm, wpmLabel, eyeContactPct, confidentPct, dominantExpr, stabilityLabel, framesChecked: aiTrack.framesChecked };
+    }
 
     function draw() {
       if (evaluated) {
+        stopAiScan();
         const words = scriptText.trim().split(/\s+/).filter(Boolean).length;
         const hasStruct = /(selamat|perkenalkan|masalah|analisis|solusi|rekomendasi|timeline|target|terima kasih)/i.test(scriptText);
         const hasNumbers = /\d+/.test(scriptText);
-        const mediaBonus = recordedVideoUrl ? 22 : recordedAudioUrl ? 16 : 0;
-        const score = Math.min(98, Math.max(48, (words >= 60 ? 45 : words >= 30 ? 32 : 18) + (hasStruct ? 18 : 6) + (hasNumbers ? 13 : 5) + mediaBonus));
+        const aiMetrics = computeAiDeliveryMetrics(words);
+        const aiBonus =
+          (aiMetrics.eyeContactPct !== null && aiMetrics.eyeContactPct >= 70 ? 6 : 0) +
+          (aiMetrics.confidentPct !== null && aiMetrics.confidentPct >= 70 ? 4 : 0);
+        const mediaBonus = recordedVideoUrl ? 18 : recordedAudioUrl ? 14 : 0;
+        const score = Math.min(99, Math.max(45, (words >= 60 ? 40 : words >= 30 ? 28 : 16) + (hasStruct ? 16 : 6) + (hasNumbers ? 12 : 5) + mediaBonus + aiBonus));
 
         state.flowResults.presentation = score;
         state.flowResults.presentationTelemetry = {
@@ -2159,29 +2246,58 @@
           words,
           hasVideo: Boolean(recordedVideoUrl),
           hasAudio: Boolean(recordedAudioUrl),
+          mediaUrl: uploadedMediaUrl || recordedVideoUrl || recordedAudioUrl || null,
           hasStruct,
           hasNumbers,
+          aiMetrics,
           score
         };
         if (state.preFlow) state.preFlow.presEnd = new Date().toLocaleString("id-ID");
         persistPreProgress(gradeId);
+
+        if (window.SupabaseService && state.currentUser && (uploadedMediaUrl || recordedVideoUrl || recordedAudioUrl)) {
+          window.SupabaseService.saveMediaRecord({
+            nip: state.currentUser.nip,
+            fullName: state.currentUser.full_name,
+            grade: gradeId,
+            unit: state.currentUser.unit || state.unitFilter,
+            activity: `BOD-5 Self-Presentation — ${topicTitle}`,
+            mediaType: recordedVideoUrl ? "video" : "audio",
+            mediaUrl: uploadedMediaUrl || "",
+            transcript: scriptText,
+            durationSec: recDurationSec,
+            score,
+            aiMetrics
+          });
+        }
 
         root.innerHTML = `
           <div class="card">
             <div class="assess-header">
               <div>
                 <span class="grade-badge emerald">${data.title} • Self-Presentation (Selesai)</span>
-                <h2 style="font-size:20px;color:var(--primary);">Evaluasi Self-Presentation</h2>
+                <h2 style="font-size:20px;color:var(--primary);">Evaluasi AI Video &amp; Self-Presentation</h2>
               </div>
               <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
             </div>
+
+            <div class="tag-row" style="margin-bottom:14px;">
+              <span class="tag" style="background:var(--emerald-soft);color:#065f46;">📹 Media: ${recordedVideoUrl ? "Video + Suara" : recordedAudioUrl ? "Audio Saja" : "Skrip Teks"}</span>
+              ${aiMetrics.eyeContactPct !== null ? `<span class="tag">👁️ Kontak Mata & Framing: ${aiMetrics.eyeContactPct}%</span>` : ""}
+              ${aiMetrics.confidentPct !== null ? `<span class="tag">😊 Ekspresi Tenang/Positif: ${aiMetrics.confidentPct}% (${aiMetrics.dominantExpr})</span>` : ""}
+              ${aiMetrics.stabilityLabel !== "Tidak terukur" ? `<span class="tag">🧍 Postur: ${aiMetrics.stabilityLabel}</span>` : ""}
+              <span class="tag">⏱️ Tempo Bicara: ${aiMetrics.wpmLabel}</span>
+            </div>
+
             <div class="feedback-box info">
               <strong>Ringkasan Aktual Presentasi Anda:</strong>
               <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;line-height:1.6;">
-                <li>Media rekaman: <strong>${recordedVideoUrl ? "Video Kamera + Suara ✓" : recordedAudioUrl ? "Audio Saja ✓" : "Belum merekam kamera/suara (hanya skrip)"}</strong></li>
-                <li>Panjang paparan/skrip: <strong>${words} kata</strong> • Struktur alur presentasi: <strong>${hasStruct ? "Terstruktur ✓" : "Perlu pembukaan–solusi–penutup"}</strong> • Angka/target: <strong>${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}</strong></li>
+                <li>Durasi rekaman: <strong>${recDurationSec} detik</strong> • Panjang paparan/transkrip: <strong>${words} kata</strong> • Struktur alur: <strong>${hasStruct ? "Terstruktur ✓" : "Perlu pembukaan–solusi–penutup"}</strong> • Metrik angka: <strong>${hasNumbers ? "Ada ✓" : "Tambahkan angka target"}</strong>.</li>
+                ${aiMetrics.eyeContactPct !== null ? `<li><strong>Analisis AI Kamera:</strong> Kontak mata &amp; posisi wajah di tengah frame <strong>${aiMetrics.eyeContactPct}%</strong>, ekspresi dominan <strong>${aiMetrics.dominantExpr}</strong> (${aiMetrics.confidentPct}% tenang/positif), stabilitas postur: <strong>${aiMetrics.stabilityLabel}</strong>.</li>` : ""}
+                ${uploadStatusLabel ? `<li>Status penyimpanan file rekaman: <strong>${uploadStatusLabel}</strong></li>` : ""}
               </ul>
             </div>
+
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
               <button class="btn btn-emerald" id="btnPresFinish">Selesai &amp; Kembali ke Daftar Aktivitas →</button>
             </div>
@@ -2202,9 +2318,9 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge emerald">${data.title} • 6. Self-Presentation</span>
+              <span class="grade-badge emerald">${data.title} • 6. Self-Presentation (AI Video Analyzer)</span>
               <h2 style="font-size:20px;color:var(--primary);">${topicTitle}</h2>
-              <div style="font-size:13px;color:var(--text-muted);">Sampaikan ide, analisis, dan rekomendasi Anda melalui rekaman kamera/suara secara tenang, runtut, dan meyakinkan (3–5 menit).</div>
+              <div style="font-size:13px;color:var(--text-muted);">Sampaikan ide, analisis, dan rekomendasi Anda melalui rekaman kamera/suara (3–5 menit). AI akan menganalisis kontak mata, ekspresi, postur, tempo bicara (WPM), serta menyimpan rekaman untuk review Admin.</div>
             </div>
             <div class="timer-pill" id="presTimer">05:00</div>
           </div>
@@ -2225,26 +2341,43 @@
             <button class="btn ${isRecording && recMode === "audio" ? "btn-danger" : "btn-outline-dark"}" id="btnPresAudio" ${isRecording && recMode !== "audio" ? "disabled" : ""}>
               ${isRecording && recMode === "audio" ? "⏹ Stop Rekaman Audio" : "🎙️ Rekam Audio Saja"}
             </button>
+            ${
+              recordedVideoUrl || recordedAudioUrl
+                ? `<a class="btn btn-outline-dark btn-sm" href="${recordedVideoUrl || recordedAudioUrl}" download="presentasi_${state.participantNip || "peserta"}.webm">⬇ Unduh File Rekaman</a>`
+                : ""
+            }
           </div>
 
           ${
             isRecording && recMode === "video"
-              ? `<div style="margin-bottom:12px;"><video id="presLivePreview" autoplay muted playsinline style="width:100%;max-width:440px;border-radius:12px;border:2px solid #ef4444;background:#000;"></video><div style="font-size:12px;color:#dc2626;font-weight:700;margin-top:4px;">● Sedang merekam video &amp; transkripsi suara otomatis...</div></div>`
+              ? `
+                <div style="margin-bottom:12px;">
+                  <video id="presLivePreview" autoplay muted playsinline style="width:100%;max-width:460px;border-radius:12px;border:2px solid #ef4444;background:#000;"></video>
+                  <div id="presAiLiveBadge" style="font-size:12px;color:#0f172a;background:#fef2f2;border:1px solid #fecaca;padding:6px 10px;border-radius:8px;margin-top:6px;max-width:460px;font-weight:600;">
+                    ● Merekam video + AI menganalisis kontak mata, ekspresi &amp; postur secara real-time...
+                  </div>
+                </div>
+              `
               : ""
           }
-          ${recordedVideoUrl ? `<div style="margin-bottom:12px;"><video controls src="${recordedVideoUrl}" style="width:100%;max-width:440px;border-radius:12px;border:1px solid var(--border);"></video></div>` : ""}
-          ${recordedAudioUrl ? `<div style="margin-bottom:12px;"><audio controls src="${recordedAudioUrl}" style="width:100%;max-width:440px;"></audio></div>` : ""}
+          ${recordedVideoUrl ? `<div style="margin-bottom:12px;"><video controls src="${recordedVideoUrl}" style="width:100%;max-width:460px;border-radius:12px;border:1px solid var(--border);"></video></div>` : ""}
+          ${recordedAudioUrl ? `<div style="margin-bottom:12px;"><audio controls src="${recordedAudioUrl}" style="width:100%;max-width:460px;"></audio></div>` : ""}
+          ${uploadStatusLabel ? `<div style="font-size:12.5px;font-weight:700;color:var(--emerald-dark);margin-bottom:10px;">${uploadStatusLabel}</div>` : ""}
 
           <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">Transkrip Otomatis / Poin Skrip Presentasi Anda:</label>
           <textarea class="textarea-box" id="presScript" style="min-height:140px;" placeholder="Ucapan Anda saat merekam akan tertulis otomatis di sini, atau Anda dapat menuliskan poin presentasi secara langsung...">${scriptText}</textarea>
 
           <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-            <button class="btn btn-emerald" id="btnSubmitPres">Selesaikan &amp; Evaluasi Self-Presentation →</button>
+            <button class="btn btn-emerald" id="btnSubmitPres" ${isRecording ? "disabled" : ""}>Selesaikan &amp; Evaluasi Self-Presentation →</button>
           </div>
         </div>
       `;
 
       startTimer(300, "presTimer", () => {
+        if (isRecording && mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+          isRecording = false;
+        }
         evaluated = true;
         draw();
       });
@@ -2254,24 +2387,54 @@
         if (vEl) vEl.srcObject = activeStream;
       }
 
-      let speechRec = null;
       async function togglePresRec(mode) {
         if (!isRecording) {
           try {
-            const stream = await navigator.mediaDevices.getUserMedia(mode === "video" ? { video: true, audio: true } : { audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia(
+              mode === "video" ? { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: true } : { audio: true }
+            );
             activeStream = stream;
             recMode = mode;
+            recStartedAt = Date.now();
+            uploadedMediaUrl = null;
+            uploadStatusLabel = "";
+            aiTrack.framesChecked = 0;
+            aiTrack.eyeContactFrames = 0;
+            aiTrack.confidentFrames = 0;
+            aiTrack.tenseFrames = 0;
+            aiTrack.exprCounts = {};
+            aiTrack.centerXs = [];
+
             const chunks = [];
-            mediaRecorder = new MediaRecorder(stream);
+            const opts = mode === "video" ? { videoBitsPerSecond: 350000, audioBitsPerSecond: 48000 } : { audioBitsPerSecond: 48000 };
+            mediaRecorder = new MediaRecorder(stream, opts);
             mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
-            mediaRecorder.onstop = () => {
+            mediaRecorder.onstop = async () => {
+              stopAiScan();
+              recDurationSec = Math.max(1, Math.round((Date.now() - recStartedAt) / 1000));
               if (speechRec) { try { speechRec.stop(); } catch {} speechRec = null; }
               const blob = new Blob(chunks, { type: mode === "video" ? "video/webm" : "audio/webm" });
-              if (mode === "video") { recordedVideoUrl = URL.createObjectURL(blob); recordedAudioUrl = null; }
-              else { recordedAudioUrl = URL.createObjectURL(blob); recordedVideoUrl = null; }
+              const localUrl = URL.createObjectURL(blob);
+              if (mode === "video") { recordedVideoUrl = localUrl; recordedAudioUrl = null; }
+              else { recordedAudioUrl = localUrl; recordedVideoUrl = null; }
               stream.getTracks().forEach((t) => t.stop());
               activeStream = null;
+              uploadStatusLabel = "⏳ Mengunggah file rekaman ke Server untuk review Admin...";
               draw();
+
+              if (window.SupabaseService && state.currentUser) {
+                const up = await window.SupabaseService.uploadMedia(blob, `pres_${state.currentUser.nip}_${gradeId}_${mode}.webm`);
+                if (up.ok && up.url) {
+                  uploadedMediaUrl = up.url;
+                  uploadStatusLabel =
+                    up.storage === "cloud"
+                      ? "✓ File rekaman berhasil tersimpan di Cloud Server (dapat dilihat Admin)."
+                      : "✓ File rekaman tersimpan di Database (dapat dilihat Admin).";
+                } else {
+                  uploadStatusLabel = "⚠ Rekaman siap diputar & diunduh lokal (aktifkan bucket 'assessment-media' di Supabase Storage untuk simpan file besar).";
+                }
+                draw();
+              }
             };
             mediaRecorder.start();
             isRecording = true;
@@ -2292,12 +2455,51 @@
                 speechRec.start();
               } catch {}
             }
+
             draw();
+
+            if (mode === "video") {
+              const aiReady = await loadPresAiModels();
+              if (aiReady) {
+                stopAiScan();
+                aiInterval = setInterval(async () => {
+                  const vEl = document.getElementById("presLivePreview");
+                  if (!vEl || vEl.readyState < 2 || !vEl.videoWidth) return;
+                  try {
+                    const det = await window.faceapi
+                      .detectSingleFace(vEl, new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+                      .withFaceExpressions();
+                    aiTrack.framesChecked++;
+                    if (det && det.detection) {
+                      const b = det.detection.box;
+                      const cx = (b.x + b.width / 2) / vEl.videoWidth;
+                      aiTrack.centerXs.push(cx);
+                      if (cx >= 0.25 && cx <= 0.75) aiTrack.eyeContactFrames++;
+                      if (det.expressions) {
+                        const top = Object.entries(det.expressions).sort((a, b2) => b2[1] - a[1])[0];
+                        if (top) {
+                          aiTrack.exprCounts[top[0]] = (aiTrack.exprCounts[top[0]] || 0) + 1;
+                          if (top[0] === "neutral" || top[0] === "happy") aiTrack.confidentFrames++;
+                          else aiTrack.tenseFrames++;
+                        }
+                      }
+                    }
+                    const badge = document.getElementById("presAiLiveBadge");
+                    if (badge && aiTrack.framesChecked > 0) {
+                      const ec = Math.round((aiTrack.eyeContactFrames / aiTrack.framesChecked) * 100);
+                      const cf = Math.round((aiTrack.confidentFrames / aiTrack.framesChecked) * 100);
+                      const sec = Math.max(1, Math.round((Date.now() - recStartedAt) / 1000));
+                      badge.textContent = `● Merekam (${sec} dtk) • 👁️ Kontak Mata: ${ec}% • 😊 Ekspresi Tenang/Positif: ${cf}%`;
+                    }
+                  } catch {}
+                }, 850);
+              }
+            }
           } catch {
             alert("Kamera/Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat menuliskan poin presentasi.");
           }
         } else {
-          mediaRecorder.stop();
+          if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
           isRecording = false;
         }
       }
@@ -2311,6 +2513,7 @@
           return;
         }
         clearTimer();
+        stopAiScan();
         evaluated = true;
         draw();
       });
@@ -2515,17 +2718,30 @@
       }
     }
 
-    // 7. Analisis Aktual Self-Presentation — BOD-5
+    // 7. Analisis Aktual Self-Presentation + AI Video Analyzer — BOD-5
     if (res.presentationTelemetry) {
       const pr = res.presentationTelemetry;
+      const ai = pr.aiMetrics || {};
       if (pr.hasVideo || pr.hasAudio) {
         realStrengths.push(
-          `[Self-Presentation] <strong>Rekaman Presentasi Mandiri (${pr.score}/100):</strong> Anda merekam ${pr.hasVideo ? "Video Kamera + Suara" : "Audio"} (${pr.words} kata)${pr.hasStruct ? " dengan alur pembukaan–solusi–penutup yang runtut" : ""}.`
+          `[Self-Presentation] <strong>Rekaman Presentasi Mandiri (${pr.score}/100):</strong> Anda merekam ${pr.hasVideo ? "Video Kamera + Suara" : "Audio"} (${pr.words} kata, ${ai.durationSec || 0} dtk)${pr.hasStruct ? " dengan alur pembukaan–solusi–penutup yang runtut" : ""}.`
         );
       } else {
         realImprovements.push(
           `[Self-Presentation] <strong>Belum Merekam Kamera/Suara (${pr.words} kata skrip):</strong> Pada asesmen resmi BOD-5, artikulasi suara, kontak mata kamera, dan gestur presentasi dinilai langsung oleh asesor.`
         );
+      }
+      if (ai.eyeContactPct !== null && ai.eyeContactPct !== undefined) {
+        if (ai.eyeContactPct >= 70) {
+          realStrengths.push(`[AI Video Analyzer] <strong>Kontak Mata &amp; Framing Baik (${ai.eyeContactPct}%):</strong> Wajah Anda konsisten menghadap kamera dengan ekspresi dominan <em>${ai.dominantExpr}</em> (${ai.confidentPct}% tenang/positif) dan postur <em>${ai.stabilityLabel}</em>.`);
+        } else {
+          realImprovements.push(`[AI Video Analyzer] <strong>Kontak Mata &amp; Posisi Wajah Perlu Ditingkatkan (${ai.eyeContactPct}%):</strong> Pertahankan pandangan ke lensa kamera dan posisi wajah di tengah frame (ekspresi terdeteksi: ${ai.dominantExpr}, postur: ${ai.stabilityLabel}).`);
+        }
+      }
+      if (ai.wpm && (ai.wpm > 160 || ai.wpm < 95)) {
+        realImprovements.push(`[AI Delivery Tempo] <strong>Kecepatan Bicara (${ai.wpmLabel}):</strong> Usahakan berbicara pada tempo ideal 105–155 kata/menit agar artikulasi tetap jernih dan meyakinkan.`);
+      } else if (ai.wpm) {
+        realStrengths.push(`[AI Delivery Tempo] <strong>Tempo Bicara Ideal (${ai.wpmLabel}):</strong> Ritme penyampaian Anda nyaman disimak dan mudah dipahami asesor.`);
       }
       if (!pr.hasNumbers) {
         realImprovements.push(
@@ -2806,9 +3022,10 @@
   async function renderAdminPanel() {
     if (!state.currentUser || state.currentUser.role !== "admin") return renderHome();
     clearTimer();
-    let adminTab = "users"; // users | results
+    let adminTab = "users"; // users | results | media
     let users = [];
     let results = [];
+    let mediaList = [];
     let searchQ = "";
     let gradeFilter = "Semua";
     let statusMsg = "";
@@ -2819,6 +3036,10 @@
       if (uRes.ok) users = uRes.data;
       const rRes = await window.SupabaseService.fetchResults(200, null);
       if (rRes.ok) results = rRes.data;
+      if (typeof window.SupabaseService.fetchMediaRecords === "function") {
+        const mRes = await window.SupabaseService.fetchMediaRecords(100);
+        if (mRes.ok) mediaList = mRes.data;
+      }
       draw();
     }
 
@@ -2836,6 +3057,7 @@
       });
 
       const filteredResults = results.filter((r) => gradeFilter === "Semua" || r.grade === gradeFilter);
+      const filteredMedia = mediaList.filter((m) => gradeFilter === "Semua" || m.grade === gradeFilter);
 
       root.innerHTML = `
         <div class="card">
@@ -2843,13 +3065,14 @@
             <div>
               <span class="grade-badge amber">Panel Administrator SDM</span>
               <h2 style="font-size:22px;color:var(--primary);">Kelola Data User Pegawai &amp; Rekap Asesmen</h2>
-              <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Akun Administrator khusus untuk pengelolaan user pegawai, verifikasi akun, dan pemantauan rekap hasil asesmen.</p>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Akun Administrator khusus untuk pengelolaan user pegawai, verifikasi akun, pemantauan rekap hasil, serta review rekaman video &amp; suara peserta.</p>
             </div>
           </div>
 
           <div class="potrai-tabs">
             <button class="potrai-tab ${adminTab === "users" ? "active" : ""}" data-atab="users">Data User Pegawai (${users.length})</button>
             <button class="potrai-tab ${adminTab === "results" ? "active" : ""}" data-atab="results">Rekap Hasil Asesmen (${results.length})</button>
+            <button class="potrai-tab ${adminTab === "media" ? "active" : ""}" data-atab="media">🎬 Rekaman Video &amp; Suara (${mediaList.length})</button>
           </div>
 
           ${statusMsg ? `<div class="feedback-box info" style="margin-top:0;margin-bottom:14px;">${statusMsg}</div>` : ""}
@@ -2975,7 +3198,8 @@
               </table>
             </div>
           `
-              : `
+              : adminTab === "results"
+              ? `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
               <select id="adminGradeFilter" class="select-input" style="min-width:160px;">
                 <option value="Semua" ${gradeFilter === "Semua" ? "selected" : ""}>Semua Grade</option>
@@ -3009,6 +3233,66 @@
                 </tbody>
               </table>
             </div>
+          `
+              : `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+              <select id="adminGradeFilter" class="select-input" style="min-width:160px;">
+                <option value="Semua" ${gradeFilter === "Semua" ? "selected" : ""}>Semua Grade</option>
+                <option value="BOD-3" ${gradeFilter === "BOD-3" ? "selected" : ""}>BOD-3</option>
+                <option value="BOD-4" ${gradeFilter === "BOD-4" ? "selected" : ""}>BOD-4</option>
+                <option value="BOD-5" ${gradeFilter === "BOD-5" ? "selected" : ""}>BOD-5</option>
+              </select>
+              <span style="font-size:12.5px;color:var(--text-muted);">Menampilkan rekaman video presentasi &amp; suara telepon peserta beserta analisis AI &amp; transkrip.</span>
+            </div>
+            ${
+              filteredMedia.length === 0
+                ? `<div class="memo-box"><p>Belum ada rekaman video atau suara yang tersimpan di server.</p></div>`
+                : `<div style="display:flex;flex-direction:column;gap:14px;">
+                    ${filteredMedia
+                      .map((m) => {
+                        const d = m.details || {};
+                        const ai = d.aiMetrics || {};
+                        return `
+                          <div class="memo-box" style="background:#fff;border-left-color:var(--primary-light);">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                              <div>
+                                <span class="grade-badge">${m.grade} • ${d.mediaType === "video" ? "🎥 VIDEO" : "🎙️ AUDIO"}</span>
+                                <h4 style="margin-top:4px;">${m.participant_name} (NIP: ${m.participant_nip}) — ${d.activity || "Rekaman Asesmen"}</h4>
+                                <div style="font-size:12px;color:var(--text-muted);">${new Date(m.created_at).toLocaleString("id-ID")} • Durasi: ${d.durationSec || 0} detik</div>
+                              </div>
+                              ${d.mediaUrl ? `<a class="btn btn-outline-dark btn-sm" href="${d.mediaUrl}" target="_blank" download>⬇ Unduh File</a>` : ""}
+                            </div>
+
+                            ${
+                              d.mediaUrl
+                                ? d.mediaType === "video"
+                                  ? `<video controls src="${d.mediaUrl}" style="width:100%;max-width:480px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;"></video>`
+                                  : `<audio controls src="${d.mediaUrl}" style="width:100%;max-width:480px;margin-bottom:10px;"></audio>`
+                                : `<div style="font-size:12.5px;color:#b45309;margin-bottom:8px;">⚠ File media belum terunggah ke Cloud Storage (hanya transkrip &amp; metrik AI yang tercatat).</div>`
+                            }
+
+                            <div class="tag-row" style="margin-bottom:8px;">
+                              ${ai.eyeContactPct !== null && ai.eyeContactPct !== undefined ? `<span class="tag">👁️ Kontak Mata: ${ai.eyeContactPct}%</span>` : ""}
+                              ${ai.confidentPct !== null && ai.confidentPct !== undefined ? `<span class="tag">😊 Ekspresi: ${ai.dominantExpr || "-"} (${ai.confidentPct}%)</span>` : ""}
+                              ${ai.stabilityLabel && ai.stabilityLabel !== "Tidak terukur" ? `<span class="tag">🧍 Postur: ${ai.stabilityLabel}</span>` : ""}
+                              ${ai.wpmLabel ? `<span class="tag">⏱️ Tempo: ${ai.wpmLabel}</span>` : ""}
+                              ${ai.pickupDelaySec ? `<span class="tag">📞 Diangkat dalam: ${ai.pickupDelaySec} dtk</span>` : ""}
+                            </div>
+
+                            ${
+                              d.transcript
+                                ? `<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;">
+                                     <strong>Transkrip Ucapan:</strong>
+                                     <p style="margin-top:4px;white-space:pre-wrap;">${d.transcript}</p>
+                                   </div>`
+                                : ""
+                            }
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                   </div>`
+            }
           `
           }
         </div>
@@ -3150,19 +3434,22 @@
             await loadData();
           });
         });
-      } else {
-        document.getElementById("btnExportCsv").addEventListener("click", () => {
-          const header = "Waktu,NIP,Nama,Grade,Unit,Skor,Status\n";
-          const rows = filteredResults
-            .map((r) => `"${new Date(r.created_at).toLocaleString("id-ID")}","${r.participant_nip}","${r.participant_name}","${r.grade}","${r.unit}",${r.score},"${r.status}"`)
-            .join("\n");
-          const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `rekap-asesmen-${new Date().toISOString().slice(0, 10)}.csv`;
-          a.click();
-        });
+      } else if (adminTab === "results") {
+        const btnExp = document.getElementById("btnExportCsv");
+        if (btnExp) {
+          btnExp.addEventListener("click", () => {
+            const header = "Waktu,NIP,Nama,Grade,Unit,Skor,Status\n";
+            const rows = filteredResults
+              .map((r) => `"${new Date(r.created_at).toLocaleString("id-ID")}","${r.participant_nip}","${r.participant_name}","${r.grade}","${r.unit}",${r.score},"${r.status}"`)
+              .join("\n");
+            const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `rekap-asesmen-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+          });
+        }
       }
     }
 
