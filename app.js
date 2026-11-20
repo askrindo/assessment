@@ -1325,47 +1325,136 @@
     }
 
     function renderCsEval(item) {
-      const combined = (writtenAnswers.join(" ") + " " + scriptText).toLowerCase();
-      const matched = item.keywords.filter((k) => combined.includes(k));
-      const words = combined.split(/\s+/).filter(Boolean).length;
-      const mediaBonus = isWrittenOnly ? 10 : recordedVideoUrl ? 10 : recordedAudioUrl ? 8 : 0;
-      const score = Math.min(98, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + mediaBonus)));
+      const combinedRaw = `${writtenAnswers.join(" ")} ${scriptText}`.trim();
+      const combined = combinedRaw.toLowerCase();
+      const wordList = combinedRaw.split(/\s+/).filter(Boolean);
+      const words = wordList.length;
+      const uniqueRatio = words > 0 ? new Set(wordList.map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))).size / words : 0;
+      const isSpammy = words >= 15 && uniqueRatio < 0.42;
+
+      const totalQs = item.writtenQuestions.length;
+      const answeredQs = item.writtenQuestions.filter((_, qi) => ((writtenAnswers[qi] || "").trim().split(/\s+/).filter(Boolean).length) >= 12).length;
+      const missingQNums = item.writtenQuestions.map((_, qi) => (((writtenAnswers[qi] || "").trim().split(/\s+/).filter(Boolean).length) < 12 ? qi + 1 : null)).filter(Boolean);
+
+      const hasNumbers = /\d+/.test(combinedRaw);
+      const hasActionTimeline = /(prioritas|langkah|target|timeline|hari|minggu|sla|checklist|evaluasi|koordinasi|pic|monitoring)/i.test(combined);
+      const matched = item.keywords.filter((k) => combined.includes(k.toLowerCase()));
+      const missingKeywords = item.keywords.filter((k) => !combined.includes(k.toLowerCase()));
+
+      // Evaluasi per Rubrik Kompetensi BOD-5 secara dinamis
+      const rubricSyn = {
+        analysis: ["analisis", "analisa", "akar", "penyebab", "data", "hitung", "triase", "masalah", "selisih"],
+        managing: ["prioritas", "jadwal", "waktu", "sla", "bagi", "alokasi", "timeline", "target", "kapasitas"],
+        business: ["biaya", "efisiensi", "efisien", "lembur", "hemat", "margin", "keuntungan", "sumber daya", "pareto"],
+        quality: ["kualitas", "error", "standar", "ketelitian", "teliti", "akurasi", "akurat", "checklist", "double-check", "verifikasi", "sop"],
+        customer: ["klien", "pelanggan", "mitra", "komplain", "keluhan", "layanan", "kepuasan", "notifikasi", "transparan"],
+        digital: ["digital", "aplikasi", "sistem", "otomatis", "otomatisasi", "dashboard", "template", "software"],
+        improvement: ["perbaikan", "tingkat", "pangkas", "proses", "inovasi", "mencegah", "berulang", "solusi"],
+        collaboration: ["kolaborasi", "kerja sama", "sinergi", "koordinasi", "lintas", "gudang", "pemasaran", "tim", "pendampingan"],
+        valuing: ["senior", "junior", "beragam", "beda", "gaya kerja", "perspektif", "hargai", "masukan", "pasangkan"],
+        adaptability: ["adaptasi", "adaptif", "perubahan", "mendadak", "cepat", "fleksibel", "penyesuaian"]
+      };
+      const rubricChecks = (item.rubric || []).map((r) => {
+        const rl = r.toLowerCase();
+        const toks = new Set(rl.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((t) => t.length >= 4));
+        Object.keys(rubricSyn).forEach((k) => {
+          if (rl.includes(k)) rubricSyn[k].forEach((s) => toks.add(s));
+        });
+        let hits = 0;
+        toks.forEach((kw) => {
+          if (combined.includes(kw)) hits++;
+        });
+        return { text: r, matched: hits >= 2 };
+      });
+      const matchedRubrics = rubricChecks.filter((r) => r.matched).length;
+
+      // Rincian Skor Transparan: Kelengkapan Soal (/25) + Relevansi Rubrik & Konsep (/45) + Data & Aksi (/20) + Elaborasi (/10)
+      const qScore = Math.round((answeredQs / Math.max(1, totalQs)) * 25);
+      const conceptScore = Math.min(25, Math.round((matched.length / Math.max(5, item.keywords.length * 0.45)) * 25));
+      const rubScore = Math.round((matchedRubrics / Math.max(1, rubricChecks.length)) * 20);
+      const dataActScore = (hasNumbers ? 10 : 3) + (hasActionTimeline ? 10 : 3);
+      const elabScore = words >= 100 ? 10 : words >= 60 ? 7 : 4;
+
+      let score = qScore + conceptScore + rubScore + dataActScore + elabScore;
+      if (matched.length === 0 && matchedRubrics === 0) score = Math.min(score, 45);
+      if (isSpammy) score = Math.min(score, 32);
+      score = Math.min(98, Math.max(20, score));
+
       if (!state.flowResults.casestudy) state.flowResults.casestudy = [];
       state.flowResults.casestudy[idx] = score;
       if (!state.flowResults.casestudyTelemetry) state.flowResults.casestudyTelemetry = [];
       state.flowResults.casestudyTelemetry[idx] = {
         title: item.title,
         words,
+        answeredQs,
+        totalQs,
         writtenOnly: isWrittenOnly,
         hasVideo: Boolean(recordedVideoUrl),
         hasAudio: Boolean(recordedAudioUrl),
+        hasNumbers,
+        matchedRubrics,
+        totalRubrics: rubricChecks.length,
         matchedKeywords: matched,
-        missingKeywords: item.keywords.filter((k) => !combined.includes(k)).slice(0, 4),
+        missingKeywords: missingKeywords.slice(0, 4),
+        isSpammy,
         score
       };
       if (state.preFlow) state.preFlow.csEnd = new Date().toLocaleString("id-ID");
       persistPreProgress(gradeId);
 
+      const csNotes = [];
+      if (isSpammy) csNotes.push("Terdeteksi pengulangan kata berlebih. Tuliskan analisis studi kasus secara objektif dan runtut.");
+      if (missingQNums.length > 0) csNotes.push(`Pertanyaan nomor <strong>${missingQNums.join(", ")}</strong> masih kosong atau terlalu singkat (< 12 kata). Pastikan seluruh pertanyaan terjawab tuntas.`);
+      if (!hasNumbers) csNotes.push("Belum ada angka kuantitatif dari data kasus (misal: jumlah pesanan, persentase error/biaya, SLA hari). Sertakan angka untuk memperkuat <em>Analysis &amp; Judgment</em>.");
+      if (!hasActionTimeline) csNotes.push("Tambahkan langkah prioritas, pembagian peran, dan target waktu penyelesaian yang konkret.");
+      const missedR = rubricChecks.filter((r) => !r.matched).map((r) => r.text);
+      if (missedR.length > 0) csNotes.push(`Kompetensi rubrik yang belum tampak kuat di jawaban Anda: <em>${missedR.join("; ")}</em>.`);
+
       return `
         <div class="feedback-box">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <strong>Evaluasi Case Study + Async Presentation</strong>
-              <div style="font-size:13px;color:var(--text-muted);">Total kata: ${words} • Poin kunci: ${matched.length} ${recordedVideoUrl ? "• Rekaman Video Tersimpan ✓" : recordedAudioUrl ? "• Rekaman Audio Tersimpan ✓" : ""}</div>
+              <strong>Evaluasi ${isWrittenOnly ? "Case Study (Tertulis)" : "Case Study + Async Presentation"} — Berbasis Bukti Aktual</strong>
+              <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">
+                Soal terjawab: <strong>${answeredQs}/${totalQs}</strong> • Total kata: <strong>${words}</strong> • Rubrik terbukti: <strong>${matchedRubrics}/${rubricChecks.length}</strong> • Konsep kunci: <strong>${matched.length}</strong>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);">
+                Rincian: Kelengkapan ${qScore}/25 · Konsep ${conceptScore}/25 · Rubrik ${rubScore}/20 · Data/Aksi ${dataActScore}/20 · Elaborasi ${elabScore}/10
+              </div>
             </div>
             <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
           </div>
+          ${matched.length > 0 ? `<div class="tag-row" style="margin-top:8px;">${matched.map((m) => `<span class="tag">✓ ${m}</span>`).join("")}</div>` : ""}
         </div>
         <div class="rubric-grid">
-          ${item.rubric.map((r) => `<div class="rubric-item"><label>Indikator AI Assessor</label><div style="font-size:13px;">${r}</div></div>`).join("")}
+          ${rubricChecks
+            .map(
+              (r) => `
+            <div class="rubric-item" style="border-left:3px solid ${r.matched ? "#10b981" : "#f59e0b"};">
+              <label style="color:${r.matched ? "#047857" : "#b45309"};">${r.matched ? "✓ Terbukti di Jawaban" : "✕ Belum Tampak"}</label>
+              <div style="font-size:13px;">${r.text}</div>
+            </div>
+          `
+            )
+            .join("")}
         </div>
+        ${
+          csNotes.length > 0
+            ? `<div class="feedback-box warn" style="margin-top:14px;">
+                 <strong>🛠️ Catatan Perbaikan Spesifik Berdasarkan Jawaban Anda:</strong>
+                 <ul style="margin-left:18px;margin-top:6px;font-size:13px;line-height:1.6;">
+                   ${csNotes.map((n) => `<li>${n}</li>`).join("")}
+                 </ul>
+               </div>`
+            : `<div class="feedback-box info" style="margin-top:14px;"><strong>✓ Analisis Case Study Sangat Kuat:</strong> Seluruh pertanyaan, rubrik kompetensi, data angka, dan langkah prioritas telah terjawab secara konkret.</div>`
+        }
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
-          <h4>Benchmark Jawaban &amp; Presentasi Ideal (BOD-5)</h4>
+          <h4>Benchmark Jawaban Ideal (${gradeId})</h4>
           <p>${item.benchmark}</p>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="btn btn-emerald" id="btnNextCs">
-            ${idx + 1 < pool.length ? "Kasus Berikutnya" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
+            ${idx + 1 < pool.length ? "Kasus Berikutnya" : state.inPreLobby ? "Selesai &amp; Kembali ke Daftar Aktivitas →" : state.fullFlow ? "Lanjut ke Metode Berikutnya" : "Lihat Ringkasan Hasil"}
           </button>
         </div>
       `;
@@ -2349,15 +2438,38 @@
     function draw() {
       if (evaluated) {
         stopAiScan();
-        const words = scriptText.trim().split(/\s+/).filter(Boolean).length;
-        const hasStruct = /(selamat|perkenalkan|masalah|analisis|solusi|rekomendasi|timeline|target|terima kasih)/i.test(scriptText);
+        const wordList = scriptText.trim().split(/\s+/).filter(Boolean);
+        const words = wordList.length;
+        const uniqueRatio = words > 0 ? new Set(wordList.map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))).size / words : 0;
+        const isSpammy = words >= 15 && uniqueRatio < 0.42;
+
+        const hasOpening = /(selamat|perkenalkan|nama saya|hari ini saya|tujuan|ringkasan|latar belakang)/i.test(scriptText);
+        const hasBody = /(masalah|akar|analisis|analisa|solusi|rekomendasi|perbaikan|digital|kolaborasi|prioritas)/i.test(scriptText);
+        const hasClosing = /(timeline|target|kpi|minggu|hari|terima kasih|demikian|kesimpulan|penutup)/i.test(scriptText);
+        const hasStruct = hasOpening && hasBody && hasClosing;
         const hasNumbers = /\d+/.test(scriptText);
         const aiMetrics = computeAiDeliveryMetrics(words);
+        const structScore = (hasOpening ? 6 : 1) + (hasBody ? 10 : 2) + (hasClosing ? 6 : 1); // max 22
         const aiBonus =
-          (aiMetrics.eyeContactPct !== null && aiMetrics.eyeContactPct >= 70 ? 6 : 0) +
-          (aiMetrics.confidentPct !== null && aiMetrics.confidentPct >= 70 ? 4 : 0);
-        const mediaBonus = recordedVideoUrl ? 18 : recordedAudioUrl ? 14 : 0;
-        const score = Math.min(99, Math.max(45, (words >= 60 ? 40 : words >= 30 ? 28 : 16) + (hasStruct ? 16 : 6) + (hasNumbers ? 12 : 5) + mediaBonus + aiBonus));
+          (aiMetrics.eyeContactPct !== null && aiMetrics.eyeContactPct >= 70 ? 8 : 0) +
+          (aiMetrics.confidentPct !== null && aiMetrics.confidentPct >= 70 ? 6 : 0) +
+          (aiMetrics.wpm >= 100 && aiMetrics.wpm <= 160 ? 4 : 0); // max 18
+        const mediaBonus = recordedVideoUrl ? 16 : recordedAudioUrl ? 12 : 0; // max 16
+        const elabScore = words >= 70 ? 32 : words >= 40 ? 24 : words >= 20 ? 15 : 8; // max 32
+        const numScore = hasNumbers ? 12 : 4; // max 12
+
+        let score = structScore + aiBonus + mediaBonus + elabScore + numScore;
+        if (isSpammy) score = Math.min(score, 32);
+        score = Math.min(99, Math.max(25, score));
+
+        const presNotes = [];
+        if (isSpammy) presNotes.push("Terdeteksi banyak pengulangan kata pada skrip/transkrip. Sampaikan paparan secara natural dan runtut.");
+        if (!hasOpening) presNotes.push("<strong>Pembukaan:</strong> Mulai dengan salam, perkenalan singkat, dan ringkasan inti masalah/tujuan.");
+        if (!hasBody) presNotes.push("<strong>Isi Analisis &amp; Solusi:</strong> Perkuat analisis akar masalah, usulan perbaikan proses/digital, dan kolaborasi tim.");
+        if (!hasClosing) presNotes.push("<strong>Timeline, KPI &amp; Penutup:</strong> Tutup dengan jadwal implementasi, target KPI, dan ucapan terima kasih.");
+        if (!hasNumbers) presNotes.push("<strong>Angka/Metrik:</strong> Sebutkan angka target (%, hari SLA, efisiensi biaya) agar presentasi lebih meyakinkan.");
+        if (aiMetrics.eyeContactPct !== null && aiMetrics.eyeContactPct < 70) presNotes.push(`<strong>Kontak Mata (${aiMetrics.eyeContactPct}%):</strong> Pertahankan pandangan ke lensa kamera dan posisi wajah di tengah frame.`);
+        if (aiMetrics.wpm && (aiMetrics.wpm > 160 || aiMetrics.wpm < 95)) presNotes.push(`<strong>Tempo Bicara (${aiMetrics.wpmLabel}):</strong> Sesuaikan kecepatan bicara ke rentang ideal 105–155 kata/menit.`);
 
         state.flowResults.presentation = score;
         state.flowResults.presentationTelemetry = {
@@ -2400,22 +2512,36 @@
               <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
             </div>
 
-            <div class="tag-row" style="margin-bottom:14px;">
+            <div class="tag-row" style="margin-bottom:10px;">
               <span class="tag" style="background:var(--emerald-soft);color:#065f46;">📹 Media: ${recordedVideoUrl ? "Video + Suara" : recordedAudioUrl ? "Audio Saja" : "Skrip Teks"}</span>
-              ${aiMetrics.eyeContactPct !== null ? `<span class="tag">👁️ Kontak Mata & Framing: ${aiMetrics.eyeContactPct}%</span>` : ""}
-              ${aiMetrics.confidentPct !== null ? `<span class="tag">😊 Ekspresi Tenang/Positif: ${aiMetrics.confidentPct}% (${aiMetrics.dominantExpr})</span>` : ""}
+              <span class="tag" style="background:${hasOpening ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasOpening ? "#065f46" : "#991b1b"};">${hasOpening ? "✓" : "✕"} Pembukaan</span>
+              <span class="tag" style="background:${hasBody ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasBody ? "#065f46" : "#991b1b"};">${hasBody ? "✓" : "✕"} Analisis &amp; Solusi</span>
+              <span class="tag" style="background:${hasClosing ? "var(--emerald-soft)" : "var(--rose-soft)"};color:${hasClosing ? "#065f46" : "#991b1b"};">${hasClosing ? "✓" : "✕"} Timeline/KPI &amp; Penutup</span>
+              ${aiMetrics.eyeContactPct !== null ? `<span class="tag">👁️ Kontak Mata: ${aiMetrics.eyeContactPct}%</span>` : ""}
+              ${aiMetrics.confidentPct !== null ? `<span class="tag">😊 Ekspresi: ${aiMetrics.confidentPct}% (${aiMetrics.dominantExpr})</span>` : ""}
               ${aiMetrics.stabilityLabel !== "Tidak terukur" ? `<span class="tag">🧍 Postur: ${aiMetrics.stabilityLabel}</span>` : ""}
-              <span class="tag">⏱️ Tempo Bicara: ${aiMetrics.wpmLabel}</span>
+              <span class="tag">⏱️ Tempo: ${aiMetrics.wpmLabel}</span>
             </div>
 
             <div class="feedback-box info">
               <strong>Ringkasan Aktual Presentasi Anda:</strong>
               <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;line-height:1.6;">
-                <li>Durasi rekaman: <strong>${recDurationSec} detik</strong> • Panjang paparan/transkrip: <strong>${words} kata</strong> • Struktur alur: <strong>${hasStruct ? "Terstruktur ✓" : "Perlu pembukaan–solusi–penutup"}</strong> • Metrik angka: <strong>${hasNumbers ? "Ada ✓" : "Tambahkan angka target"}</strong>.</li>
+                <li>Durasi rekaman: <strong>${recDurationSec} detik</strong> • Panjang paparan/transkrip: <strong>${words} kata</strong> • Metrik angka: <strong>${hasNumbers ? "Ada ✓" : "Belum ada angka"}</strong>.</li>
                 ${aiMetrics.eyeContactPct !== null ? `<li><strong>Analisis AI Kamera:</strong> Kontak mata &amp; posisi wajah di tengah frame <strong>${aiMetrics.eyeContactPct}%</strong>, ekspresi dominan <strong>${aiMetrics.dominantExpr}</strong> (${aiMetrics.confidentPct}% tenang/positif), stabilitas postur: <strong>${aiMetrics.stabilityLabel}</strong>.</li>` : ""}
                 ${uploadStatusLabel ? `<li>Status penyimpanan file rekaman: <strong>${uploadStatusLabel}</strong></li>` : ""}
               </ul>
             </div>
+
+            ${
+              presNotes.length > 0
+                ? `<div class="feedback-box warn" style="margin-top:12px;">
+                     <strong>🛠️ Saran Perbaikan Presentasi Anda:</strong>
+                     <ul style="margin-left:18px;margin-top:6px;font-size:13px;line-height:1.6;">
+                       ${presNotes.map((n) => `<li>${n}</li>`).join("")}
+                     </ul>
+                   </div>`
+                : ""
+            }
 
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
               <button class="btn btn-emerald" id="btnPresFinish">Selesai &amp; Kembali ke Daftar Aktivitas →</button>

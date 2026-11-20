@@ -1132,8 +1132,11 @@
       ].filter(Boolean);
       const docFilesOpenedCount = ws.openedFilesSet ? Object.keys(ws.openedFilesSet).length : 1;
 
-      // 5. Analisis Substansi & Skor Berbasis Bukti Nyata
+      // 5. Analisis Substansi, Anti-Spam & Skor Berbasis Bukti Nyata
       const combined = `${emailTxt} ${chatTxt} ${callTxt} ${docCombined}`.toLowerCase();
+      const combinedWords = combined.split(/\s+/).filter(Boolean);
+      const uniqueRatio = combinedWords.length > 0 ? new Set(combinedWords.map((w) => w.replace(/[^a-z0-9]/g, ""))).size / combinedWords.length : 0;
+      const isSpammy = combinedWords.length >= 20 && uniqueRatio < 0.36;
       const matched = item.keywords.filter((k) => combined.includes(k.toLowerCase()));
       const missingKeywords = item.keywords.filter((k) => !combined.includes(k.toLowerCase()));
       const hasMetrics = /\d+/.test(combined);
@@ -1166,7 +1169,9 @@
         (docFilesOpenedCount >= 2 ? 2 : 0); // max 18
       const substScore = Math.min(12, Math.round((matched.length / Math.max(5, item.keywords.length * 0.6)) * 12)); // max 12
 
-      const score = Math.min(99, Math.max(20, emailScore + chatScore + callScore + docScore + substScore));
+      let score = emailScore + chatScore + callScore + docScore + substScore;
+      if (isSpammy) score = Math.min(score, 35);
+      score = Math.min(99, Math.max(20, score));
 
       if (!state.flowResults.potrai) state.flowResults.potrai = [];
       state.flowResults.potrai[idx] = score;
@@ -1378,7 +1383,19 @@
         </div>
 
         <div class="rubric-grid">
-          ${item.rubric.map((r) => `<div class="rubric-item"><label>Kompetensi ${gradeId} Dinilai</label><div style="font-size:13px;">${r}</div></div>`).join("")}
+          ${item.rubric
+            .map((r) => {
+              const rl = r.toLowerCase();
+              const toks = rl.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((t) => t.length >= 4);
+              const hit =
+                toks.some((t) => combined.includes(t)) ||
+                (/email|decision|analysis|judgment/.test(rl) && emailOk) ||
+                (/chat|customer|partner/.test(rl) && chatOk) ||
+                (/call|coaching|inspir/.test(rl) && callOk) ||
+                (/plan|organ|work|doc/.test(rl) && docOk);
+              return `<div class="rubric-item" style="border-left:3px solid ${hit ? "#10b981" : "#f59e0b"};"><label style="color:${hit ? "#047857" : "#b45309"};">${hit ? "✓ Terbukti" : "✕ Belum Tampak"} (${gradeId})</label><div style="font-size:13px;">${r}</div></div>`;
+            })
+            .join("")}
         </div>
         <div class="memo-box" style="margin-top:16px;border-left-color:var(--emerald);background:#f0fdf4;">
           <h4>Benchmark Jawaban Ideal (${gradeId})</h4>
