@@ -7,7 +7,12 @@
     cleanupAllSessions,
     onLaunchPersonality,
     onLaunchCap,
+    onLaunchCognitive,
+    onLaunchMove,
+    onLaunchCaseStudy,
+    onLaunchPresentation,
     onLaunchMainAssessment,
+    onFinishBod5Report,
     onBackHome,
     onSaveProgress,
     onResetProgress
@@ -25,7 +30,15 @@
         diveStart: "-",
         diveEnd: "-",
         capStart: "-",
-        capEnd: "-"
+        capEnd: "-",
+        coreStart: "-",
+        coreEnd: "-",
+        moveStart: "-",
+        moveEnd: "-",
+        csStart: "-",
+        csEnd: "-",
+        presStart: "-",
+        presEnd: "-"
       };
     }
 
@@ -478,9 +491,227 @@
         return;
       }
 
-      // STEP 5: DAFTAR AKTIVITAS PRE-ASSESSMENT (LOBBY ENGAGE STYLE)
+      // STEP 5: DAFTAR AKTIVITAS (BOD-5 = 6 TES HARI-H LANGSUNG | BOD-3 & BOD-4 = 2 TES PRE-ASSESSMENT)
       stopCam();
-      const firstActDone = gradeId === "BOD-5" ? typeof state.flowResults.psychometric === "number" : state.preAssessment.personalityDone;
+
+      if (gradeId === "BOD-5") {
+        const capDone = Boolean(state.preAssessment.capDone || typeof state.flowResults.cap === "number");
+        const coreDone = typeof state.flowResults.psychometric === "number";
+        const diveDone = Boolean(state.preAssessment.personalityDone || state.flowResults.personality);
+        const moveDone = typeof state.flowResults.move === "number";
+        const csDone = Array.isArray(state.flowResults.casestudy) && state.flowResults.casestudy.length > 0;
+        const presDone = typeof state.flowResults.presentation === "number";
+
+        const bod5Rows = [
+          {
+            no: 1,
+            key: "cap",
+            title: "Career Achievement Portfolio (CAP)",
+            sub: "Menggali pengalaman kerja dan pencapaian peserta berdasarkan pengalaman nyata.",
+            count: state.examMode === "full" ? "5" : "2",
+            start: pf.capStart || "-",
+            end: pf.capEnd || "-",
+            done: capDone,
+            unlocked: true,
+            onClick: () => {
+              pf.capStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchCap();
+            }
+          },
+          {
+            no: 2,
+            key: "core",
+            title: "Cognitive Test (CORE — Cognitive Reasoning Profile V.4)",
+            sub: "Mengukur kemampuan berpikir logis, analitis, dan pemecahan masalah.",
+            count: state.examMode === "full" ? "10" : "6",
+            start: pf.coreStart || "-",
+            end: pf.coreEnd || "-",
+            done: coreDone,
+            unlocked: capDone,
+            onClick: () => {
+              pf.coreStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchCognitive();
+            }
+          },
+          {
+            no: 3,
+            key: "dive",
+            title: "Personality Test (DIVE — Disposition-Five Inventory V.2)",
+            sub: "Mengidentifikasi karakteristik dan kecenderungan perilaku peserta (OCEAN).",
+            count: "15 (3 Halaman × 5)",
+            start: pf.diveStart || "-",
+            end: pf.diveEnd || "-",
+            done: diveDone,
+            unlocked: coreDone,
+            onClick: () => {
+              pf.diveStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchPersonality();
+            }
+          },
+          {
+            no: 4,
+            key: "move",
+            title: "Motivation & Values Test (MOVE — Motivation and Values at the Workplace)",
+            sub: "Mengidentifikasi faktor motivasi dan nilai-nilai yang mendorong peserta dalam bekerja.",
+            count: "8",
+            start: pf.moveStart || "-",
+            end: pf.moveEnd || "-",
+            done: moveDone,
+            unlocked: diveDone,
+            onClick: () => {
+              pf.moveStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchMove();
+            }
+          },
+          {
+            no: 5,
+            key: "casestudy",
+            title: "Case Study",
+            sub: "Mengukur kemampuan analisis, pemecahan masalah, dan penyusunan solusi tertulis.",
+            count: "1",
+            start: pf.csStart || "-",
+            end: pf.csEnd || "-",
+            done: csDone,
+            unlocked: moveDone,
+            onClick: () => {
+              pf.csStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchCaseStudy();
+            }
+          },
+          {
+            no: 6,
+            key: "presentation",
+            title: "Self-Presentation",
+            sub: "Mengukur kemampuan komunikasi dan penyampaian ide melalui presentasi mandiri.",
+            count: "1",
+            start: pf.presStart || "-",
+            end: pf.presEnd || "-",
+            done: presDone,
+            unlocked: csDone,
+            onClick: () => {
+              pf.presStart = new Date().toLocaleString("id-ID");
+              if (typeof onSaveProgress === "function") onSaveProgress();
+              onLaunchPresentation();
+            }
+          }
+        ];
+
+        const doneCount = bod5Rows.filter((r) => r.done).length;
+        const allBod5Done = doneCount === 6;
+
+        root.innerHTML = `
+          <div class="card">
+            <div class="assess-header">
+              <div>
+                <span class="grade-badge emerald">TEKNIS VIRTUAL ASSESSMENT | HARI-H LANGSUNG BOD-5 (6 TES)</span>
+                <h2 style="font-size:21px;color:var(--primary);">Daftar Aktivitas — Askrindo BOD-5</h2>
+                <div style="font-size:13px;color:var(--text-muted);">
+                  Diperuntukkan bagi <strong>Senior Staff, Staff, dan Junior Staff</strong> • Dilaksanakan dalam <strong>1 hari (08.00–17.00 WIB, total ±5 jam)</strong>.
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <span class="pill ${allBod5Done ? "pill-green" : "pill-amber"}">${doneCount} / 6 Tes Selesai</span>
+                ${connectionBadgeHtml()}
+              </div>
+            </div>
+
+            <div class="feedback-box info" style="margin-top:0;margin-bottom:16px;font-size:13px;">
+              ${
+                allBod5Done
+                  ? "<strong>✓ Seluruh 6 aktivitas Virtual Assessment BOD-5 telah berstatus Selesai &amp; Tersimpan!</strong> Klik tombol di bawah untuk melihat <strong>Laporan Hasil &amp; Feedback Lengkap</strong>."
+                  : "<strong>Petunjuk Pelaksanaan BOD-5:</strong> Terdapat <strong>6 tes</strong> yang dikerjakan langsung pada Hari-H <strong>sesuai urutan (1 → 6)</strong>. Anda dapat mengerjakan <strong>dengan jeda pada setiap aktivitas</strong> — progres setiap tes yang selesai otomatis tersimpan di database."
+              }
+            </div>
+
+            <div style="overflow-x:auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Daftar Aktivitas (6 Tes BOD-5)</th>
+                    <th>Jumlah Pertanyaan</th>
+                    <th>Memulai Aktivitas</th>
+                    <th>Menyelesaikan Aktivitas</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bod5Rows
+                    .map(
+                      (r) => `
+                    <tr>
+                      <td><strong>${r.no}</strong></td>
+                      <td>
+                        <strong>${r.title}</strong>
+                        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${r.sub}</div>
+                      </td>
+                      <td>${r.count}</td>
+                      <td style="font-size:12px;">${r.start}</td>
+                      <td style="font-size:12px;">${r.end}</td>
+                      <td>
+                        ${
+                          r.done
+                            ? `<span class="pill pill-green">Selesai ✓</span>`
+                            : r.unlocked
+                            ? `<button class="btn btn-outline-dark btn-sm" data-bod5-act="${r.key}">Belum Dikerjakan</button>`
+                            : `<span class="pill" style="background:#f1f5f9;color:#64748b;">🔒 Selesaikan Tes #${r.no - 1}</span>`
+                        }
+                      </td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;flex-wrap:wrap;gap:10px;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-outline-dark" id="btnLobbyHome">← Kembali ke Beranda</button>
+                ${
+                  doneCount > 0
+                    ? `<button class="btn btn-outline-dark btn-sm" id="btnResetPreProg" style="color:#dc2626;border-color:#fca5a5;">↻ Ulangi Asesmen BOD-5</button>`
+                    : ""
+                }
+              </div>
+              <button class="btn ${allBod5Done ? "btn-emerald" : "btn-primary"}" id="btnFinishBod5" ${allBod5Done ? "" : "disabled"}>
+                Lihat Laporan Hasil &amp; Feedback Asesmen BOD-5 →
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.querySelectorAll("[data-bod5-act]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const key = btn.getAttribute("data-bod5-act");
+            const row = bod5Rows.find((r) => r.key === key);
+            if (row && row.unlocked && !row.done) row.onClick();
+          });
+        });
+
+        const btnReset5 = document.getElementById("btnResetPreProg");
+        if (btnReset5 && typeof onResetProgress === "function") {
+          btnReset5.addEventListener("click", () => {
+            if (confirm("Reset seluruh progres 6 tes BOD-5 dan mulai dari awal?")) {
+              onResetProgress();
+            }
+          });
+        }
+        document.getElementById("btnLobbyHome").addEventListener("click", onBackHome);
+        document.getElementById("btnFinishBod5").addEventListener("click", () => {
+          if (!allBod5Done) return;
+          if (typeof onFinishBod5Report === "function") onFinishBod5Report();
+        });
+        return;
+      }
+
+      // BOD-3 & BOD-4: PRE-ASSESSMENT 2 AKTIVITAS
+      const firstActDone = state.preAssessment.personalityDone;
       const capDone = state.preAssessment.capDone;
       const bothPreDone = firstActDone && capDone;
 

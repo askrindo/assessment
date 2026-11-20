@@ -556,8 +556,15 @@
         flowResults: {
           personality: state.flowResults.personality || null,
           psychometric: typeof state.flowResults.psychometric === "number" ? state.flowResults.psychometric : null,
+          psychometricTelemetry: state.flowResults.psychometricTelemetry || null,
           cap: typeof state.flowResults.cap === "number" ? state.flowResults.cap : null,
-          capTelemetry: state.flowResults.capTelemetry || null
+          capTelemetry: state.flowResults.capTelemetry || null,
+          move: typeof state.flowResults.move === "number" ? state.flowResults.move : null,
+          moveTelemetry: state.flowResults.moveTelemetry || null,
+          casestudy: Array.isArray(state.flowResults.casestudy) ? state.flowResults.casestudy : null,
+          casestudyTelemetry: state.flowResults.casestudyTelemetry || null,
+          presentation: typeof state.flowResults.presentation === "number" ? state.flowResults.presentation : null,
+          presentationTelemetry: state.flowResults.presentationTelemetry || null
         }
       }
     });
@@ -578,8 +585,15 @@
       if (d.flowResults) {
         if (d.flowResults.personality) state.flowResults.personality = d.flowResults.personality;
         if (typeof d.flowResults.psychometric === "number") state.flowResults.psychometric = d.flowResults.psychometric;
+        if (d.flowResults.psychometricTelemetry) state.flowResults.psychometricTelemetry = d.flowResults.psychometricTelemetry;
         if (typeof d.flowResults.cap === "number") state.flowResults.cap = d.flowResults.cap;
         if (d.flowResults.capTelemetry) state.flowResults.capTelemetry = d.flowResults.capTelemetry;
+        if (typeof d.flowResults.move === "number") state.flowResults.move = d.flowResults.move;
+        if (d.flowResults.moveTelemetry) state.flowResults.moveTelemetry = d.flowResults.moveTelemetry;
+        if (Array.isArray(d.flowResults.casestudy)) state.flowResults.casestudy = d.flowResults.casestudy;
+        if (d.flowResults.casestudyTelemetry) state.flowResults.casestudyTelemetry = d.flowResults.casestudyTelemetry;
+        if (typeof d.flowResults.presentation === "number") state.flowResults.presentation = d.flowResults.presentation;
+        if (d.flowResults.presentationTelemetry) state.flowResults.presentationTelemetry = d.flowResults.presentationTelemetry;
       }
       if (d.preFlow) {
         state.preFlow = { ...d.preFlow };
@@ -622,12 +636,27 @@
         cleanupAllSessions,
         onLaunchPersonality: () => {
           state.fullFlow = false;
-          if (gradeId === "BOD-5") renderPsychometric(gradeId);
-          else renderOceanPersonality(gradeId);
+          renderOceanPersonality(gradeId);
         },
         onLaunchCap: () => {
           state.fullFlow = false;
           renderCapStar(gradeId);
+        },
+        onLaunchCognitive: () => {
+          state.fullFlow = false;
+          renderPsychometric(gradeId);
+        },
+        onLaunchMove: () => {
+          state.fullFlow = false;
+          renderMoveTest(gradeId);
+        },
+        onLaunchCaseStudy: () => {
+          state.fullFlow = false;
+          renderCaseStudy(gradeId, "written-only");
+        },
+        onLaunchPresentation: () => {
+          state.fullFlow = false;
+          renderSelfPresentation(gradeId);
         },
         onLaunchMainAssessment: () => {
           state.inPreLobby = false;
@@ -635,6 +664,11 @@
           state.flowQueue = [];
           if (gradeId === "BOD-5") renderCaseStudy(gradeId);
           else renderPotrai(gradeId);
+        },
+        onFinishBod5Report: () => {
+          state.inPreLobby = false;
+          state.fullFlow = false;
+          renderReport();
         },
         onBackHome: () => {
           state.inPreLobby = false;
@@ -700,11 +734,11 @@
     }
     if (
       !state.fullFlow &&
-      (methodId === "potrai" || methodId === "casestudy") &&
+      methodId === "potrai" &&
       (!state.preAssessment.personalityDone || !state.preAssessment.capDone)
     ) {
       const goPre = confirm(
-        "Sesuai alur resmi DDI, peserta perlu menyelesaikan Pre-Assessment (Personality/Psychometric Test & CAP) terlebih dahulu untuk menentukan fokus kasus simulasi.\n\nKlik OK untuk mulai dari Pre-Assessment sekarang, atau Cancel untuk langsung latihan simulasi."
+        "Sesuai alur resmi DDI, peserta perlu menyelesaikan Pre-Assessment (Personality Test & CAP) terlebih dahulu untuk menentukan fokus kasus simulasi.\n\nKlik OK untuk mulai dari Pre-Assessment sekarang, atau Cancel untuk langsung latihan simulasi."
       );
       if (goPre) {
         startFullAssessment(gradeId);
@@ -712,10 +746,12 @@
       }
     }
     if (methodId === "potrai") renderPotrai(gradeId);
-    else if (methodId === "casestudy") renderCaseStudy(gradeId);
+    else if (methodId === "casestudy") renderCaseStudy(gradeId, gradeId === "BOD-5" ? "written-only" : "full");
+    else if (methodId === "presentation") renderSelfPresentation(gradeId);
     else if (methodId === "cap") renderCapStar(gradeId);
     else if (methodId === "personality") renderOceanPersonality(gradeId);
-    else if (methodId === "psychometric") renderPsychometric(gradeId);
+    else if (methodId === "cognitive" || methodId === "psychometric") renderPsychometric(gradeId);
+    else if (methodId === "move") renderMoveTest(gradeId);
   }
 
   function shuffleArray(arr) {
@@ -1047,15 +1083,16 @@
     draw();
   }
 
-  // ======================== CASE STUDY + ASYNC PRESENTATION (BOD-5) ========================
-  function renderCaseStudy(gradeId) {
+  // ======================== 5. CASE STUDY (BOD-5) ========================
+  function renderCaseStudy(gradeId, mode = "full") {
     const data = GRADES[gradeId];
     const isFull = state.examMode === "full";
+    const isWrittenOnly = mode === "written-only";
     const genCases = window.DATA_GENERAL ? window.DATA_GENERAL.casestudy_bod5 : [];
     const combinedCases = [...data.casestudy, ...genCases];
-    let pool = shuffleArray(filterPoolByUnit(combinedCases, state.unitFilter)).slice(0, 2);
+    let pool = shuffleArray(filterPoolByUnit(combinedCases, state.unitFilter)).slice(0, isWrittenOnly ? 1 : 2);
     if (isFull) {
-      pool = pool.map((c) => ({ ...c, prepSec: 4500, presentSec: 1200 })); // (75+20) x 2 = 190 mnt
+      pool = pool.map((c) => ({ ...c, prepSec: 4500, presentSec: 1200 }));
     }
     let idx = 0;
     let stage = "written"; // written | present | eval
@@ -1100,7 +1137,7 @@
               )
               .join("")}
             <div style="display:flex;justify-content:flex-end;">
-              <button class="btn btn-primary" id="btnToPresent">Lanjut ke Presentasi Asinkron</button>
+              <button class="btn btn-primary" id="btnToPresent">${isWrittenOnly ? "Simpan &amp; Evaluasi Case Study →" : "Lanjut ke Presentasi Asinkron"}</button>
             </div>
           `
               : stage === "present"
@@ -1151,7 +1188,7 @@
 
       if (stage === "written") {
         startTimer(item.prepSec, "csTimer", () => {
-          stage = "present";
+          stage = isWrittenOnly ? "eval" : "present";
           draw();
         });
         document.getElementById("btnToPresent").addEventListener("click", () => {
@@ -1162,7 +1199,8 @@
             alert("Mohon isi jawaban tertulis terlebih dahulu.");
             return;
           }
-          stage = "present";
+          if (isWrittenOnly) clearTimer();
+          stage = isWrittenOnly ? "eval" : "present";
           draw();
         });
       } else if (stage === "present") {
@@ -1274,7 +1312,12 @@
             recordedVideoUrl = null;
             draw();
           } else {
-            if (state.fullFlow) nextInFlow();
+            if (state.preFlow) state.preFlow.csEnd = new Date().toLocaleString("id-ID");
+            persistPreProgress(gradeId);
+            if (state.inPreLobby) {
+              state.preFlow.step = "lobby";
+              openPreAssessmentLobby(gradeId);
+            } else if (state.fullFlow) nextInFlow();
             else renderReport();
           }
         });
@@ -1285,7 +1328,7 @@
       const combined = (writtenAnswers.join(" ") + " " + scriptText).toLowerCase();
       const matched = item.keywords.filter((k) => combined.includes(k));
       const words = combined.split(/\s+/).filter(Boolean).length;
-      const mediaBonus = recordedVideoUrl ? 10 : recordedAudioUrl ? 8 : 0;
+      const mediaBonus = isWrittenOnly ? 10 : recordedVideoUrl ? 10 : recordedAudioUrl ? 8 : 0;
       const score = Math.min(98, Math.max(48, Math.round((matched.length / 7) * 65 + (words >= 75 ? 20 : 10) + mediaBonus)));
       if (!state.flowResults.casestudy) state.flowResults.casestudy = [];
       state.flowResults.casestudy[idx] = score;
@@ -1293,12 +1336,15 @@
       state.flowResults.casestudyTelemetry[idx] = {
         title: item.title,
         words,
+        writtenOnly: isWrittenOnly,
         hasVideo: Boolean(recordedVideoUrl),
         hasAudio: Boolean(recordedAudioUrl),
         matchedKeywords: matched,
         missingKeywords: item.keywords.filter((k) => !combined.includes(k)).slice(0, 4),
         score
       };
+      if (state.preFlow) state.preFlow.csEnd = new Date().toLocaleString("id-ID");
+      persistPreProgress(gradeId);
 
       return `
         <div class="feedback-box">
@@ -1852,10 +1898,17 @@
     let selected = null;
     let checked = false;
     let correctCount = 0;
+    const missedAspects = [];
 
-    startTimer(isFull ? 7200 : items.length * 90, "psyTimer", () => {
+    startTimer(isFull ? 3600 : items.length * 90, "psyTimer", () => {
       state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
-      if (state.fullFlow) nextInFlow();
+      state.flowResults.psychometricTelemetry = { correctCount, totalItems: items.length, missedAspects };
+      if (state.preFlow) state.preFlow.coreEnd = new Date().toLocaleString("id-ID");
+      persistPreProgress(gradeId);
+      if (state.inPreLobby) {
+        state.preFlow.step = "lobby";
+        openPreAssessmentLobby(gradeId);
+      } else if (state.fullFlow) nextInFlow();
       else renderReport();
     });
 
@@ -1865,10 +1918,10 @@
         <div class="card">
           <div class="assess-header">
             <div>
-              <span class="grade-badge emerald">${data.title} • Psychometric Test</span>
+              <span class="grade-badge emerald">${data.title} • Cognitive Test (CORE — Profile V.4)</span>
               <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">Butir ${idx + 1}/${items.length} • Aspek: <strong>${q.aspect}</strong></div>
             </div>
-            <div class="timer-pill" id="psyTimer">07:30</div>
+            <div class="timer-pill" id="psyTimer">09:00</div>
           </div>
 
           <p style="font-size:16px;font-weight:600;margin-bottom:14px;">${q.question}</p>
@@ -1923,6 +1976,7 @@
         document.getElementById("btnCheckPsy").addEventListener("click", () => {
           checked = true;
           if (selected === q.answer) correctCount++;
+          else missedAspects.push(q.aspect);
           draw();
         });
       } else {
@@ -1935,8 +1989,8 @@
           } else {
             clearTimer();
             state.flowResults.psychometric = Math.round((correctCount / items.length) * 100);
-            state.preAssessment.personalityDone = true;
-            if (state.preFlow) state.preFlow.diveEnd = new Date().toLocaleString("id-ID");
+            state.flowResults.psychometricTelemetry = { correctCount, totalItems: items.length, missedAspects };
+            if (state.preFlow) state.preFlow.coreEnd = new Date().toLocaleString("id-ID");
             persistPreProgress(gradeId);
             if (state.inPreLobby) {
               state.preFlow.step = "lobby";
@@ -1946,6 +2000,320 @@
           }
         });
       }
+    }
+
+    draw();
+  }
+
+  // ======================== 4. MOTIVATION & VALUES TEST (MOVE) — BOD-5 ========================
+  function renderMoveTest(gradeId) {
+    clearTimer();
+    const data = GRADES[gradeId];
+    const items = data.move || [];
+    const answers = {};
+    let idx = 0;
+
+    function finishMove() {
+      const byDriver = {};
+      let sum = 0;
+      items.forEach((it) => {
+        const val = answers[it.id] || 3;
+        sum += val;
+        if (!byDriver[it.driver]) byDriver[it.driver] = [];
+        byDriver[it.driver].push(val);
+      });
+      const driverScores = {};
+      Object.keys(byDriver).forEach((d) => {
+        const avg = byDriver[d].reduce((a, b) => a + b, 0) / byDriver[d].length;
+        driverScores[d] = Math.round((avg / 5) * 100);
+      });
+      const sorted = Object.entries(driverScores).sort((a, b) => b[1] - a[1]);
+      const overall = Math.round((sum / (items.length * 5)) * 100);
+      state.flowResults.move = overall;
+      state.flowResults.moveTelemetry = {
+        overall,
+        driverScores,
+        topDriver: sorted[0] ? `${sorted[0][0]} (${sorted[0][1]}/100)` : "-",
+        lowDriver: sorted[sorted.length - 1] ? `${sorted[sorted.length - 1][0]} (${sorted[sorted.length - 1][1]}/100)` : "-"
+      };
+      if (state.preFlow) state.preFlow.moveEnd = new Date().toLocaleString("id-ID");
+      persistPreProgress(gradeId);
+      if (state.inPreLobby) {
+        state.preFlow.step = "lobby";
+        openPreAssessmentLobby(gradeId);
+      } else {
+        renderReport();
+      }
+    }
+
+    function draw() {
+      const it = items[idx];
+      const curVal = answers[it.id] || null;
+      const pct = Math.round(((idx + (curVal ? 1 : 0)) / items.length) * 100);
+      const scaleLabels = [
+        { v: 1, label: "1 — Sangat Tidak Sesuai" },
+        { v: 2, label: "2 — Tidak Sesuai" },
+        { v: 3, label: "3 — Netral / Cukup Sesuai" },
+        { v: 4, label: "4 — Sesuai" },
+        { v: 5, label: "5 — Sangat Sesuai / Mendorong Saya" }
+      ];
+
+      root.innerHTML = `
+        <div class="card">
+          <div class="assess-header">
+            <div>
+              <span class="grade-badge emerald">${data.title} • Motivation &amp; Values Test (MOVE)</span>
+              <h2 style="font-size:20px;color:var(--primary);">Motivation and Values at the Workplace</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Pernyataan ${idx + 1} dari ${items.length} • Pilih tingkat kesesuaian yang paling mencerminkan faktor motivasi &amp; nilai kerja Anda.</div>
+            </div>
+            <span class="pill" style="background:#f1f5f9;color:var(--primary);">${idx + 1} / ${items.length}</span>
+          </div>
+
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+
+          <div class="memo-box" style="margin-top:16px;">
+            <div style="font-size:12px;font-weight:700;color:var(--primary-light);text-transform:uppercase;margin-bottom:6px;">Dimensi Motivasi: ${it.driver}</div>
+            <p style="font-size:16px;font-weight:700;color:var(--primary);line-height:1.6;">"${it.statement}"</p>
+          </div>
+
+          <div class="option-list" style="margin-top:14px;">
+            ${scaleLabels
+              .map(
+                (s) => `
+              <div class="option-item ${curVal === s.v ? "selected" : ""}" data-move-val="${s.v}">
+                <div class="option-key">${s.v}</div>
+                <div>${s.label}</div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:18px;">
+            <button class="btn btn-outline-dark" id="btnMovePrev" ${idx === 0 ? "disabled" : ""}>← Sebelumnya</button>
+            <button class="btn btn-accent" id="btnMoveNext" ${!curVal ? "disabled" : ""}>
+              ${idx + 1 < items.length ? "Pernyataan Berikutnya →" : "Selesaikan MOVE Test →"}
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.querySelectorAll("[data-move-val]").forEach((el) => {
+        el.addEventListener("click", () => {
+          answers[it.id] = Number(el.getAttribute("data-move-val"));
+          draw();
+        });
+      });
+      document.getElementById("btnMovePrev").addEventListener("click", () => {
+        if (idx > 0) {
+          idx--;
+          draw();
+        }
+      });
+      document.getElementById("btnMoveNext").addEventListener("click", () => {
+        if (!answers[it.id]) return;
+        if (idx + 1 < items.length) {
+          idx++;
+          draw();
+        } else {
+          finishMove();
+        }
+      });
+    }
+
+    draw();
+  }
+
+  // ======================== 6. SELF-PRESENTATION (BOD-5) ========================
+  function renderSelfPresentation(gradeId) {
+    clearTimer();
+    const data = GRADES[gradeId];
+    const lastCs =
+      Array.isArray(state.flowResults.casestudyTelemetry) && state.flowResults.casestudyTelemetry[0]
+        ? state.flowResults.casestudyTelemetry[0]
+        : null;
+    const topicTitle = lastCs
+      ? `Presentasi Rekomendasi Solusi — ${lastCs.title}`
+      : "Presentasi Mandiri: Profil Kontribusi, Analisis Masalah Kerja & Usulan Perbaikan Proses (BOD-5)";
+
+    let scriptText = "";
+    let recordedVideoUrl = null;
+    let recordedAudioUrl = null;
+    let activeStream = null;
+    let mediaRecorder = null;
+    let isRecording = false;
+    let recMode = "video";
+    let evaluated = false;
+
+    function draw() {
+      if (evaluated) {
+        const words = scriptText.trim().split(/\s+/).filter(Boolean).length;
+        const hasStruct = /(selamat|perkenalkan|masalah|analisis|solusi|rekomendasi|timeline|target|terima kasih)/i.test(scriptText);
+        const hasNumbers = /\d+/.test(scriptText);
+        const mediaBonus = recordedVideoUrl ? 22 : recordedAudioUrl ? 16 : 0;
+        const score = Math.min(98, Math.max(48, (words >= 60 ? 45 : words >= 30 ? 32 : 18) + (hasStruct ? 18 : 6) + (hasNumbers ? 13 : 5) + mediaBonus));
+
+        state.flowResults.presentation = score;
+        state.flowResults.presentationTelemetry = {
+          topicTitle,
+          words,
+          hasVideo: Boolean(recordedVideoUrl),
+          hasAudio: Boolean(recordedAudioUrl),
+          hasStruct,
+          hasNumbers,
+          score
+        };
+        if (state.preFlow) state.preFlow.presEnd = new Date().toLocaleString("id-ID");
+        persistPreProgress(gradeId);
+
+        root.innerHTML = `
+          <div class="card">
+            <div class="assess-header">
+              <div>
+                <span class="grade-badge emerald">${data.title} • Self-Presentation (Selesai)</span>
+                <h2 style="font-size:20px;color:var(--primary);">Evaluasi Self-Presentation</h2>
+              </div>
+              <div class="score-big">${score}<span style="font-size:16px;color:var(--text-muted);">/100</span></div>
+            </div>
+            <div class="feedback-box info">
+              <strong>Ringkasan Aktual Presentasi Anda:</strong>
+              <ul style="margin-left:18px;margin-top:6px;font-size:13.5px;line-height:1.6;">
+                <li>Media rekaman: <strong>${recordedVideoUrl ? "Video Kamera + Suara ✓" : recordedAudioUrl ? "Audio Saja ✓" : "Belum merekam kamera/suara (hanya skrip)"}</strong></li>
+                <li>Panjang paparan/skrip: <strong>${words} kata</strong> • Struktur alur presentasi: <strong>${hasStruct ? "Terstruktur ✓" : "Perlu pembukaan–solusi–penutup"}</strong> • Angka/target: <strong>${hasNumbers ? "Ada ✓" : "Tambahkan metrik"}</strong></li>
+              </ul>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+              <button class="btn btn-emerald" id="btnPresFinish">Selesai &amp; Kembali ke Daftar Aktivitas →</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("btnPresFinish").addEventListener("click", () => {
+          if (state.inPreLobby) {
+            state.preFlow.step = "lobby";
+            openPreAssessmentLobby(gradeId);
+          } else {
+            renderReport();
+          }
+        });
+        return;
+      }
+
+      root.innerHTML = `
+        <div class="card">
+          <div class="assess-header">
+            <div>
+              <span class="grade-badge emerald">${data.title} • 6. Self-Presentation</span>
+              <h2 style="font-size:20px;color:var(--primary);">${topicTitle}</h2>
+              <div style="font-size:13px;color:var(--text-muted);">Sampaikan ide, analisis, dan rekomendasi Anda melalui rekaman kamera/suara secara tenang, runtut, dan meyakinkan (3–5 menit).</div>
+            </div>
+            <div class="timer-pill" id="presTimer">05:00</div>
+          </div>
+
+          <div class="feedback-box info" style="margin-top:0;margin-bottom:14px;font-size:13px;">
+            <strong>Panduan Struktur Self-Presentation (3 Bagian):</strong>
+            <ol style="margin-left:18px;margin-top:4px;">
+              <li><strong>Pembukaan (30 dtk):</strong> Perkenalan singkat &amp; ringkasan inti masalah/tujuan.</li>
+              <li><strong>Analisis &amp; Rekomendasi Solusi (90–120 dtk):</strong> Akar penyebab berbasis data, usulan perbaikan proses/digital, dan kolaborasi lintas tim.</li>
+              <li><strong>Timeline, KPI &amp; Penutup (60 dtk):</strong> Target terukur, mitigasi kualitas, dan penutup yang percaya diri.</li>
+            </ol>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+            <button class="btn ${isRecording && recMode === "video" ? "btn-danger" : "btn-primary"}" id="btnPresVideo" ${isRecording && recMode !== "video" ? "disabled" : ""}>
+              ${isRecording && recMode === "video" ? "⏹ Stop Rekaman Video" : "🎥 Rekam Video Kamera + Suara"}
+            </button>
+            <button class="btn ${isRecording && recMode === "audio" ? "btn-danger" : "btn-outline-dark"}" id="btnPresAudio" ${isRecording && recMode !== "audio" ? "disabled" : ""}>
+              ${isRecording && recMode === "audio" ? "⏹ Stop Rekaman Audio" : "🎙️ Rekam Audio Saja"}
+            </button>
+          </div>
+
+          ${
+            isRecording && recMode === "video"
+              ? `<div style="margin-bottom:12px;"><video id="presLivePreview" autoplay muted playsinline style="width:100%;max-width:440px;border-radius:12px;border:2px solid #ef4444;background:#000;"></video><div style="font-size:12px;color:#dc2626;font-weight:700;margin-top:4px;">● Sedang merekam video &amp; transkripsi suara otomatis...</div></div>`
+              : ""
+          }
+          ${recordedVideoUrl ? `<div style="margin-bottom:12px;"><video controls src="${recordedVideoUrl}" style="width:100%;max-width:440px;border-radius:12px;border:1px solid var(--border);"></video></div>` : ""}
+          ${recordedAudioUrl ? `<div style="margin-bottom:12px;"><audio controls src="${recordedAudioUrl}" style="width:100%;max-width:440px;"></audio></div>` : ""}
+
+          <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">Transkrip Otomatis / Poin Skrip Presentasi Anda:</label>
+          <textarea class="textarea-box" id="presScript" style="min-height:140px;" placeholder="Ucapan Anda saat merekam akan tertulis otomatis di sini, atau Anda dapat menuliskan poin presentasi secara langsung...">${scriptText}</textarea>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+            <button class="btn btn-emerald" id="btnSubmitPres">Selesaikan &amp; Evaluasi Self-Presentation →</button>
+          </div>
+        </div>
+      `;
+
+      startTimer(300, "presTimer", () => {
+        evaluated = true;
+        draw();
+      });
+
+      if (isRecording && recMode === "video" && activeStream) {
+        const vEl = document.getElementById("presLivePreview");
+        if (vEl) vEl.srcObject = activeStream;
+      }
+
+      let speechRec = null;
+      async function togglePresRec(mode) {
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia(mode === "video" ? { video: true, audio: true } : { audio: true });
+            activeStream = stream;
+            recMode = mode;
+            const chunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+              if (speechRec) { try { speechRec.stop(); } catch {} speechRec = null; }
+              const blob = new Blob(chunks, { type: mode === "video" ? "video/webm" : "audio/webm" });
+              if (mode === "video") { recordedVideoUrl = URL.createObjectURL(blob); recordedAudioUrl = null; }
+              else { recordedAudioUrl = URL.createObjectURL(blob); recordedVideoUrl = null; }
+              stream.getTracks().forEach((t) => t.stop());
+              activeStream = null;
+              draw();
+            };
+            mediaRecorder.start();
+            isRecording = true;
+
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SR) {
+              try {
+                speechRec = new SR();
+                speechRec.lang = "id-ID";
+                speechRec.continuous = true;
+                speechRec.interimResults = false;
+                speechRec.onresult = (ev) => {
+                  const last = ev.results[ev.results.length - 1][0].transcript;
+                  scriptText = (scriptText ? scriptText + " " : "") + last;
+                  const box = document.getElementById("presScript");
+                  if (box) box.value = scriptText;
+                };
+                speechRec.start();
+              } catch {}
+            }
+            draw();
+          } catch {
+            alert("Kamera/Mikrofon tidak tersedia atau izin ditolak. Anda tetap dapat menuliskan poin presentasi.");
+          }
+        } else {
+          mediaRecorder.stop();
+          isRecording = false;
+        }
+      }
+
+      document.getElementById("btnPresVideo").addEventListener("click", () => togglePresRec("video"));
+      document.getElementById("btnPresAudio").addEventListener("click", () => togglePresRec("audio"));
+      document.getElementById("btnSubmitPres").addEventListener("click", () => {
+        scriptText = document.getElementById("presScript").value.trim();
+        if (scriptText.length < 25 && !recordedVideoUrl && !recordedAudioUrl) {
+          alert("Mohon rekam video/audio presentasi atau tuliskan poin presentasi minimal 25 karakter.");
+          return;
+        }
+        clearTimer();
+        evaluated = true;
+        draw();
+      });
     }
 
     draw();
@@ -1961,18 +2329,24 @@
       const avg = Math.round(res.potrai.reduce((a, b) => a + b, 0) / res.potrai.length);
       scores.push({ label: "PotrAI Simulation", score: avg });
     }
-    if (res.casestudy) {
-      const avg = Math.round(res.casestudy.reduce((a, b) => a + b, 0) / res.casestudy.length);
-      scores.push({ label: "Case Study + Async Presentation", score: avg });
-    }
     if (typeof res.cap === "number") {
       scores.push({ label: "CAP (Career Achievement Portfolio)", score: res.cap });
     }
-    if (res.personality) {
-      scores.push({ label: "Personality Test (OCEAN Fit)", score: res.personality.overall });
-    }
     if (typeof res.psychometric === "number") {
-      scores.push({ label: "Psychometric Test", score: res.psychometric });
+      scores.push({ label: "Cognitive Test (CORE)", score: res.psychometric });
+    }
+    if (res.personality) {
+      scores.push({ label: "Personality Test (DIVE / OCEAN)", score: res.personality.overall });
+    }
+    if (typeof res.move === "number") {
+      scores.push({ label: "Motivation & Values Test (MOVE)", score: res.move });
+    }
+    if (res.casestudy) {
+      const avg = Math.round(res.casestudy.reduce((a, b) => a + b, 0) / res.casestudy.length);
+      scores.push({ label: state.selectedGrade === "BOD-5" ? "Case Study (Tertulis)" : "Case Study + Async Presentation", score: avg });
+    }
+    if (typeof res.presentation === "number") {
+      scores.push({ label: "Self-Presentation", score: res.presentation });
     }
 
     const totalAvg = scores.length ? Math.round(scores.reduce((a, b) => a + b.score, 0) / scores.length) : 0;
@@ -2083,32 +2457,80 @@
       }
     }
 
-    // 4. Analisis Aktual Case Study + Async Presentation (BOD-5)
+    // 4. Analisis Aktual Case Study (BOD-5)
     if (Array.isArray(res.casestudyTelemetry) && res.casestudyTelemetry.length > 0) {
       res.casestudyTelemetry.filter(Boolean).forEach((cs) => {
-        if (cs.hasVideo || cs.hasAudio) {
-          realStrengths.push(
-            `[Case Study] <strong>Presentasi Asinkron Tercatat:</strong> Anda merekam ${cs.hasVideo ? "Video + Suara" : "Audio"} dengan total ${cs.words} kata analisis & ${cs.matchedKeywords.length} konsep kunci.`
-          );
+        if (cs.writtenOnly) {
+          if (cs.words >= 60 && cs.matchedKeywords.length >= 5) {
+            realStrengths.push(
+              `[Case Study] <strong>Analisis Tertulis Kuat (${cs.score}/100):</strong> ${cs.words} kata analisis mencakup ${cs.matchedKeywords.length} konsep kunci (${cs.matchedKeywords.slice(0, 5).join(", ")}).`
+            );
+          } else {
+            realImprovements.push(
+              `[Case Study] <strong>Kedalaman Analisis Tertulis (${cs.words} kata):</strong> Perdalam akar masalah berbasis data & solusi operasional; aspek yang belum tersentuh: ${(cs.missingKeywords || []).join(", ")}.`
+            );
+          }
         } else {
-          realImprovements.push(
-            `[Case Study] <strong>Rekaman Presentasi Belum Dilakukan:</strong> Anda hanya mengisi teks (${cs.words} kata) tanpa rekaman video/audio. Pada asesmen BOD-5, artikulasi presentasi kamera dinilai langsung.`
-          );
-        }
-        if (cs.missingKeywords && cs.missingKeywords.length > 0 && cs.matchedKeywords.length < 5) {
-          realImprovements.push(
-            `[Case Study] <strong>Aspek Analisis yang Belum Disentuh:</strong> Pertimbangkan membahas poin berikut: ${cs.missingKeywords.join(", ")}.`
-          );
+          if (cs.hasVideo || cs.hasAudio) {
+            realStrengths.push(
+              `[Case Study] <strong>Presentasi Asinkron Tercatat:</strong> Anda merekam ${cs.hasVideo ? "Video + Suara" : "Audio"} dengan total ${cs.words} kata analisis & ${cs.matchedKeywords.length} konsep kunci.`
+            );
+          } else {
+            realImprovements.push(
+              `[Case Study] <strong>Rekaman Presentasi Belum Dilakukan:</strong> Anda hanya mengisi teks (${cs.words} kata) tanpa rekaman video/audio.`
+            );
+          }
+          if (cs.missingKeywords && cs.missingKeywords.length > 0 && cs.matchedKeywords.length < 5) {
+            realImprovements.push(
+              `[Case Study] <strong>Aspek Analisis yang Belum Disentuh:</strong> Pertimbangkan membahas poin berikut: ${cs.missingKeywords.join(", ")}.`
+            );
+          }
         }
       });
     }
 
-    // 5. Analisis Aktual Psychometric (BOD-5)
+    // 5. Analisis Aktual Cognitive Test (CORE) — BOD-5
     if (typeof res.psychometric === "number") {
+      const pt = res.psychometricTelemetry;
       if (res.psychometric >= 80) {
-        realStrengths.push(`[Psychometric Test] <strong>Ketepatan Kognitif Tinggi (${res.psychometric}/100):</strong> Logika analisis data dan pemahaman verbal sudah sangat siap.`);
+        realStrengths.push(
+          `[Cognitive Test CORE] <strong>Ketepatan Kognitif Tinggi (${res.psychometric}/100${pt ? ` • ${pt.correctCount}/${pt.totalItems} benar` : ""}):</strong> Logika analitis, numerik efisiensi, dan ketelitian data sudah sangat siap.`
+        );
       } else {
-        realImprovements.push(`[Psychometric Test] <strong>Akurasi Perlu Ditingkatkan (${res.psychometric}/100):</strong> Latih ketelitian membaca tabel angka, pola deret, dan manajemen waktu per butir soal.`);
+        realImprovements.push(
+          `[Cognitive Test CORE] <strong>Akurasi Kognitif Perlu Ditingkatkan (${res.psychometric}/100${pt ? ` • ${pt.correctCount}/${pt.totalItems} benar` : ""}):</strong>${pt && pt.missedAspects && pt.missedAspects.length ? ` Aspek yang masih keliru: <em>${[...new Set(pt.missedAspects)].join(", ")}</em>.` : " Latih ketelitian membaca angka, pola deret, dan manajemen waktu."}`
+        );
+      }
+    }
+
+    // 6. Analisis Aktual Motivation & Values Test (MOVE) — BOD-5
+    if (res.moveTelemetry) {
+      realStrengths.push(
+        `[MOVE — Motivation & Values] <strong>Pendorong Motivasi Utama:</strong> ${res.moveTelemetry.topDriver} — selaraskan peran kerja harian dengan nilai ini agar energi kerja tetap optimal.`
+      );
+      if (res.moveTelemetry.lowDriver) {
+        realImprovements.push(
+          `[MOVE — Motivation & Values] <strong>Area Penguatan Nilai Kerja:</strong> ${res.moveTelemetry.lowDriver} — bangun kebiasaan positif pada dimensi ini untuk menunjang 10 Kompetensi IFG BOD-5.`
+        );
+      }
+    }
+
+    // 7. Analisis Aktual Self-Presentation — BOD-5
+    if (res.presentationTelemetry) {
+      const pr = res.presentationTelemetry;
+      if (pr.hasVideo || pr.hasAudio) {
+        realStrengths.push(
+          `[Self-Presentation] <strong>Rekaman Presentasi Mandiri (${pr.score}/100):</strong> Anda merekam ${pr.hasVideo ? "Video Kamera + Suara" : "Audio"} (${pr.words} kata)${pr.hasStruct ? " dengan alur pembukaan–solusi–penutup yang runtut" : ""}.`
+        );
+      } else {
+        realImprovements.push(
+          `[Self-Presentation] <strong>Belum Merekam Kamera/Suara (${pr.words} kata skrip):</strong> Pada asesmen resmi BOD-5, artikulasi suara, kontak mata kamera, dan gestur presentasi dinilai langsung oleh asesor.`
+        );
+      }
+      if (!pr.hasNumbers) {
+        realImprovements.push(
+          `[Self-Presentation] <strong>Tambahkan Metrik/Target dalam Paparan:</strong> Sebutkan angka target KPI, persentase efisiensi, atau batas waktu implementasi agar presentasi lebih meyakinkan.`
+        );
       }
     }
 

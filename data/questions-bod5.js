@@ -2,7 +2,7 @@ window.DATA_BOD5 = {
   gradeId: "BOD-5",
   title: "BOD – 5 (Job Grade 8–11)",
   headcount: 253,
-  roleLabel: "Officer / Analis Senior / Supervisor Muda",
+  roleLabel: "Senior Staff, Staff, dan Junior Staff",
   successProfile: [
     "Digital Awareness",
     "Business Acumen",
@@ -16,9 +16,12 @@ window.DATA_BOD5 = {
     "Quality Orientation"
   ],
   methods: [
-    { id: "psychometric", name: "Pre-Assessment 1: Psychometric Test (120 menit)", desc: "Mengukur 3 aspek: Kemampuan Berpikir (kognitif), Karakteristik Kepribadian, dan Faktor Motivasi sesuai 10 Kompetensi IFG BOD-5." },
-    { id: "cap", name: "Pre-Assessment 2: CAP — Career Achievement Portfolio (60–75 menit)", desc: "Pertanyaan pengalaman kerja spesifik (situasi, peran, tindakan, hasil) merujuk pada 10 Kompetensi IFG BOD-5." },
-    { id: "casestudy", name: "Main Assessment: Case Study + Async Presentation (190 menit)", desc: "Menjawab studi kasus jabatan di perusahaan fiktif secara tertulis lalu menyampaikan analisis & rekomendasi lewat rekaman video mandiri." }
+    { id: "cap", name: "1. Career Achievement Portfolio (CAP)", desc: "Menggali pengalaman kerja dan pencapaian peserta berdasarkan pengalaman nyata." },
+    { id: "cognitive", name: "2. Cognitive Test (CORE)", desc: "Mengukur kemampuan berpikir logis, analitis, dan pemecahan masalah." },
+    { id: "personality", name: "3. Personality Test (DIVE)", desc: "Mengidentifikasi karakteristik dan kecenderungan perilaku peserta (5 Dimensi OCEAN)." },
+    { id: "move", name: "4. Motivation & Values Test (MOVE)", desc: "Mengidentifikasi faktor motivasi dan nilai-nilai yang mendorong peserta dalam bekerja." },
+    { id: "casestudy", name: "5. Case Study", desc: "Mengukur kemampuan analisis, pemecahan masalah, dan penyusunan solusi tertulis." },
+    { id: "presentation", name: "6. Self-Presentation", desc: "Mengukur kemampuan komunikasi dan penyampaian ide melalui rekaman presentasi mandiri." }
   ],
   casestudy: [
     {
@@ -318,6 +321,65 @@ window.DATA_BOD5 = {
       ],
       answer: 0,
       explanation: "Mencerminkan Adaptability, Customer Orientation, dan Quality Orientation secara seimbang: responsif terhadap perubahan kebutuhan pelanggan dengan tetap menjaga ketelitian."
+    }
+  ],
+  personality: [
+    { id: "b5-o1", dim: "Openness", text: "Saya antusias mempelajari fitur aplikasi digital baru yang dapat mempercepat pekerjaan tim." },
+    { id: "b5-o2", dim: "Openness", text: "Saya senang mencari cara perbaikan proses kerja agar lebih ringkas dan minim kesalahan." },
+    { id: "b5-o3", dim: "Openness", text: "Saya terbuka menerima perubahan prosedur kerja ketika situasi bisnis menuntut penyesuaian." },
+    { id: "b5-c1", dim: "Conscientiousness", text: "Saya selalu memeriksa ulang ketelitian angka dan kelengkapan dokumen sebelum diserahkan." },
+    { id: "b5-c2", dim: "Conscientiousness", text: "Saya menyusun daftar prioritas harian agar seluruh tugas selesai tepat sesuai target SLA." },
+    { id: "b5-c3", dim: "Conscientiousness", text: "Saya konsisten mengikuti standar kualitas kerja meskipun sedang berada di bawah tenggat ketat." },
+    { id: "b5-e1", dim: "Extraversion", text: "Saya aktif menyampaikan ide dan menanyakan klarifikasi saat rapat koordinasi lintas unit." },
+    { id: "b5-e2", dim: "Extraversion", text: "Saya merasa bersemangat ketika berinteraksi langsung dengan pelanggan atau mitra untuk membantu solusi." },
+    { id: "b5-e3", dim: "Extraversion", text: "Saya berani mengambil inisiatif memulai komunikasi ketika terjadi hambatan antar rekan kerja." },
+    { id: "b5-a1", dim: "Agreeableness", text: "Saya menghargai sudut pandang rekan dari latar belakang dan divisi yang berbeda saat berdiskusi." },
+    { id: "b5-a2", dim: "Agreeableness", text: "Saya bersedia membantu rekan satu tim yang sedang kewalahan agar target bersama tetap tercapai." },
+    { id: "b5-a3", dim: "Agreeableness", text: "Saya berusaha menjaga nada komunikasi yang sopan dan solutif ketika menghadapi keluhan pelanggan." },
+    { id: "b5-n1", dim: "Neuroticism", reverse: true, text: "Saya mudah panik dan sulit berkonsentrasi ketika jadwal pekerjaan berubah secara mendadak." },
+    { id: "b5-n2", dim: "Neuroticism", reverse: true, text: "Saya merasa tertekan dalam waktu lama apabila menerima koreksi atas hasil pekerjaan saya." },
+    { id: "b5-n3", dim: "Neuroticism", reverse: true, text: "Saya cenderung menunda pekerjaan yang kompleks karena khawatir membuat kesalahan." }
+  ],
+  move: [
+    {
+      id: "mv-1",
+      driver: "Achievement & Quality",
+      statement: "Saya merasa paling puas ketika mampu menyelesaikan tugas sulit dengan tingkat ketelitian 100% dan melampaui target standar unit."
+    },
+    {
+      id: "mv-2",
+      driver: "Growth & Digital Learning",
+      statement: "Kesempatan mempelajari teknologi baru, keterampilan analitis, dan tantangan kerja baru menjadi pendorong utama semangat kerja saya."
+    },
+    {
+      id: "mv-3",
+      driver: "Collaboration & Inclusivity",
+      statement: "Lingkungan kerja yang saling mendukung, terbuka terhadap perbedaan pendapat, dan kolaboratif membuat saya bekerja jauh lebih produktif."
+    },
+    {
+      id: "mv-4",
+      driver: "Customer & Business Impact",
+      statement: "Saya termotivasi ketika melihat hasil kerja saya secara langsung membantu pelanggan atau meningkatkan efisiensi biaya perusahaan."
+    },
+    {
+      id: "mv-5",
+      driver: "Integrity & Structure",
+      statement: "Kejelasan standar kualitas, kepatuhan prosedur, dan transparansi aturan kerja sangat penting bagi kenyamanan saya dalam berkontribusi."
+    },
+    {
+      id: "mv-6",
+      driver: "Achievement & Quality",
+      statement: "Saya terdorong untuk terus mencari celah perbaikan (continuous improvement) bahkan pada proses kerja yang sudah berjalan rutin."
+    },
+    {
+      id: "mv-7",
+      driver: "Growth & Digital Learning",
+      statement: "Umpan balik konstruktif dari atasan maupun rekan lintas fungsi memacu saya untuk meningkatkan kapasitas diri lebih cepat."
+    },
+    {
+      id: "mv-8",
+      driver: "Customer & Business Impact",
+      statement: "Saya lebih memilih pekerjaan yang memberi ruang bagi saya untuk berkontribusi nyata terhadap pemecahan masalah operasional bisnis."
     }
   ]
 };
