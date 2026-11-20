@@ -13,6 +13,27 @@
     "BOD-5": window.DATA_BOD5
   };
 
+  // Crisp Lucide Vector Icons (SATU Style — inline SVG, zero CDN dependency)
+  const LUCIDE_PATHS = {
+    sparkles: `<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/>`,
+    building: `<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>`,
+    target: `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`,
+    chart: `<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>`,
+    dashboard: `<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>`,
+    sliders: `<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>`,
+    clock: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+    clipboard: `<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>`,
+    video: `<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>`,
+    chat: `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
+    mail: `<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>`,
+    phone: `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>`,
+    file: `<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>`,
+    brain: `<path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>`
+  };
+  function ic(name, size = 18) {
+    return `<svg class="lucide-ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${LUCIDE_PATHS[name] || ""}</svg>`;
+  }
+
   const UNIT_OPTIONS = [
     { value: "Umum (Generik PortrAI)", label: "Standar PortrAI — Perusahaan Fiktif (Non-Asuransi)" },
     { value: "Branch Manager", label: "Branch Manager" },
@@ -190,7 +211,7 @@
           <!-- Left Visual Showcase Panel -->
           <div class="login-hero-panel">
             <div>
-              <div class="hero-kicker">✨ AI-ENABLED ASSESSMENT CENTER</div>
+              <div class="hero-kicker" style="display:inline-flex;align-items:center;gap:6px;">${ic("sparkles", 14)} AI-ENABLED ASSESSMENT CENTER</div>
               <div class="login-hero-title">Simulasi Assessment Terpadu &amp; Interaktif</div>
               <p class="login-hero-sub">
                 Persiapkan diri Anda menghadapi asesmen kompetensi dengan simulasi <strong>Virtual Office 5-Modul</strong>,
@@ -199,21 +220,21 @@
 
               <div class="feature-bento-list">
                 <div class="feature-bento-item">
-                  <div class="feature-bento-icon">🏢</div>
+                  <div class="feature-bento-icon">${ic("building", 22)}</div>
                   <div>
                     <div style="font-weight:800;font-size:14px;">PortrAI Virtual Office &amp; Live Call</div>
                     <div style="font-size:12.5px;color:#cbd5e1;">Simulasi Email, Chat AI adaptif, interupsi Telepon Masuk bersuara natural, &amp; Dokumen Analisa Bisnis.</div>
                   </div>
                 </div>
                 <div class="feature-bento-item">
-                  <div class="feature-bento-icon" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);">🎯</div>
+                  <div class="feature-bento-icon blue">${ic("target", 22)}</div>
                   <div>
                     <div style="font-weight:800;font-size:14px;">Career Achievement Portfolio &amp; Async Video</div>
                     <div style="font-size:12.5px;color:#cbd5e1;">Evaluasi bukti perilaku STAR serta perekaman presentasi video kamera + transkripsi suara otomatis.</div>
                   </div>
                 </div>
                 <div class="feature-bento-item">
-                  <div class="feature-bento-icon" style="background:linear-gradient(135deg,#10b981,#059669);">📊</div>
+                  <div class="feature-bento-icon emerald">${ic("chart", 22)}</div>
                   <div>
                     <div style="font-weight:800;font-size:14px;">Radar Kompetensi &amp; Bank Soal Acak</div>
                     <div style="font-size:12.5px;color:#cbd5e1;">Skenario spesifik unit maupun korporat umum yang diacak setiap sesi beserta laporan kesiapan instan.</div>
@@ -417,7 +438,7 @@
 
     root.innerHTML = `
       <div class="card hero-card">
-        <div class="hero-kicker">🚀 SIMETA DASHBOARD • PORTAL SIMULASI KOMPETENSI</div>
+        <div class="hero-kicker" style="display:inline-flex;align-items:center;gap:6px;">${ic("dashboard", 14)} SIMETA DASHBOARD • PORTAL SIMULASI KOMPETENSI</div>
         <h1>Selamat Datang, ${state.currentUser.full_name}</h1>
         <p>
           Pilih <strong>Fokus Unit / Skenario</strong> dan <strong>Mode Waktu</strong> di bawah ini, lalu mulai simulasi lengkap 3 metode atau latihan spesifik per instrumen asesmen.
@@ -439,11 +460,11 @@
         </div>
 
         <div class="filter-bar">
-          <label for="unitSelect">🎯 Fokus Soal / Unit:</label>
+          <label for="unitSelect" style="display:inline-flex;align-items:center;gap:6px;">${ic("sliders", 15)} Fokus Soal / Unit:</label>
           <select id="unitSelect" class="select-input">
             ${renderUnitOptions(state.unitFilter, true)}
           </select>
-          <label for="modeSelect">⏱️ Mode Waktu:</label>
+          <label for="modeSelect" style="display:inline-flex;align-items:center;gap:6px;">${ic("clock", 15)} Mode Waktu:</label>
           <select id="modeSelect" class="select-input">
             <option value="quick" ${state.examMode === "quick" ? "selected" : ""}>Latihan Cepat (Ringkas ~15–45 mnt)</option>
             <option value="full" ${state.examMode === "full" ? "selected" : ""}>Simulasi Penuh (Standar Asli 180–240 mnt)</option>
@@ -509,8 +530,8 @@
       Array.isArray(data.successProfile) && data.successProfile.length
         ? `
       <details style="margin-bottom:14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
-        <summary style="font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;">
-          📋 Lihat Success Profile (${data.successProfile.length} Kompetensi IFG)
+        <summary style="font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;display:flex;align-items:center;gap:6px;">
+          ${ic("clipboard", 14)} Lihat Success Profile (${data.successProfile.length} Kompetensi IFG)
         </summary>
         <div class="tag-row" style="margin-top:8px;">
           ${data.successProfile.map((c, i) => `<span class="tag" style="background:#e6f0f7;color:#002B49;">${i + 1}. ${c}</span>`).join("")}
@@ -3067,13 +3088,13 @@
         </div>
 
         <div class="memo-box" style="margin-top:22px;border-left-color:var(--accent);background:linear-gradient(135deg,#fffbf5 0%,#f8fafc 100%);">
-          <h3 style="font-size:16px;color:var(--primary);margin-bottom:6px;">🎯 Tips &amp; Trik Strategi Pengerjaan Asesmen yang Benar (${state.selectedGrade})</h3>
+          <h3 style="font-size:16px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;">${ic("target", 18)} Tips &amp; Trik Strategi Pengerjaan Asesmen yang Benar (${state.selectedGrade})</h3>
           <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
             Panduan praktis berikut merangkum pola perilaku yang dinilai tinggi oleh asesor pada Assessment Center resmi (DDI × IFG):
           </p>
           <div class="grid-2" style="gap:12px;">
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">💬 1. Chat (Pesan Singkat) — Cepat &amp; To the Point</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("chat", 15)}</span> 1. Chat (Pesan Singkat) — Cepat &amp; To the Point</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li><strong>Jangan dibiarkan lama tanpa balasan</strong> saat notifikasi chat masuk — respon cepat menunjukkan <em>Customer Orientation</em> &amp; <em>Driving for Results</em>.</li>
                 <li><strong>Jangan menulis terlalu panjang seperti email.</strong> Balas ringkas (2–4 kalimat), hangat, langsung sebutkan langkah tindak lanjut &amp; jam targetnya.</li>
@@ -3082,7 +3103,7 @@
             </div>
 
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📧 2. Email (Inbox) — Tuntas, Terstruktur &amp; Berbasis Data</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("mail", 15)}</span> 2. Email (Inbox) — Tuntas, Terstruktur &amp; Berbasis Data</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li><strong>Wajib balas seluruh email masuk</strong> sebelum waktu habis — setiap email memetakan kompetensi berbeda (bahkan yang terlihat rutin).</li>
                 <li>Prioritaskan email krisis/eskalasi terlebih dahulu, lalu gunakan struktur: <strong>Sikap/Keputusan → Dasar Data → Langkah Aksi → PIC &amp; Deadline</strong>.</li>
@@ -3091,7 +3112,7 @@
             </div>
 
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📞 3. Telepon Masuk (Call) — Tenang &amp; Solutif</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("phone", 15)}</span> 3. Telepon Masuk (Call) — Tenang &amp; Solutif</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li><strong>Segera angkat panggilan masuk</strong> (jangan diabaikan/ditolak) agar tidak kehilangan poin kompetensi kepemimpinan saat krisis.</li>
                 <li>Tetap tenang meski lawan bicara panik/mendesak: <strong>akui urgensi → tanyakan 1–2 fakta kunci → beri arahan sementara + komitmen follow-up</strong>.</li>
@@ -3100,7 +3121,7 @@
             </div>
 
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">📄 4. Dokumen Analisa &amp; AI Assistant</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("file", 15)}</span> 4. Dokumen Analisa &amp; AI Assistant</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li>Susun memo/laporan eksekutif dengan pola: <strong>Ringkasan Masalah → Akar Penyebab (Angka) → Rekomendasi &amp; Mitigasi Risiko → PIC &amp; Timeline</strong>.</li>
                 <li>Gunakan <em>AI Assistant</em> untuk membantu merangkum data atau mengecek kerangka, <strong>jangan copy-paste mentah</strong> tanpa menyesuaikan angka &amp; konteks jabatan Anda.</li>
@@ -3109,7 +3130,7 @@
             </div>
 
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">🧠 5. Personality Test &amp; CAP (Pre-Assessment)</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("brain", 15)}</span> 5. Personality Test &amp; CAP (Pre-Assessment)</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li><strong>Personality Test:</strong> Jawab spontan, jujur, dan konsisten sesuai kebiasaan kerja nyata. Jangan memanipulasi agar terlihat "sempurna" (<em>faking good</em>) karena terdeteksi oleh cek konsistensi.</li>
                 <li><strong>CAP:</strong> Gunakan pola <strong>STAR</strong> (<em>Situation–Task–Action–Result</em>) dari pengalaman nyata 2 tahun terakhir, perbanyak kata <strong>"Saya..."</strong> (bukan hanya "Kami"), dan wajib cantumkan <strong>angka dampak terukur</strong> (%, Rp, SLA).</li>
@@ -3117,7 +3138,7 @@
             </div>
 
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
-              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;">⏱️ 6. Manajemen Waktu &amp; Peran Jabatan</div>
+              <div style="font-weight:800;font-size:13.5px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span class="tip-icon-badge">${ic("clock", 15)}</span> 6. Manajemen Waktu &amp; Peran Jabatan</div>
               <ul style="margin-left:16px;font-size:12.5px;color:var(--text);line-height:1.6;">
                 <li><strong>Selalu berpikir sesuai level jabatan (${state.selectedGrade}):</strong> ${
                   state.selectedGrade === "BOD-3"
@@ -3317,7 +3338,7 @@
           <div class="potrai-tabs">
             <button class="potrai-tab ${adminTab === "users" ? "active" : ""}" data-atab="users">Data User Pegawai (${users.length})</button>
             <button class="potrai-tab ${adminTab === "results" ? "active" : ""}" data-atab="results">Rekap Hasil Asesmen (${results.length})</button>
-            <button class="potrai-tab ${adminTab === "media" ? "active" : ""}" data-atab="media">🎬 Rekaman Video &amp; Suara (${mediaList.length})</button>
+            <button class="potrai-tab ${adminTab === "media" ? "active" : ""}" data-atab="media" style="display:inline-flex;align-items:center;gap:6px;">${ic("video", 15)} Rekaman Video &amp; Suara (${mediaList.length})</button>
           </div>
 
           ${statusMsg ? `<div class="feedback-box info" style="margin-top:0;margin-bottom:14px;">${statusMsg}</div>` : ""}
