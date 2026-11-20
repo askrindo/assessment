@@ -200,8 +200,9 @@
     window.cleanupPreAssessmentCam = stopCam;
 
     function connectionBadgeHtml() {
+      if (window.NetMonitor) return window.NetMonitor.badgeHtml();
       const online = navigator.onLine;
-      return `<span class="pill ${online ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">📶 Connection: ${online ? "normal" : "terputus"}</span>`;
+      return `<span class="pill ${online ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">Connection: ${online ? "normal" : "terputus"}</span>`;
     }
 
     async function draw() {

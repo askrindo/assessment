@@ -1549,7 +1549,7 @@
               <div style="font-size:13px;color:var(--text-muted);">Jawablah dengan contoh pengalaman kerja berdasarkan gambaran situasi, tindakan yang Anda lakukan saat itu, beserta hasilnya.</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">📶 Connection: ${navigator.onLine ? "normal" : "terputus"}</span>
+              ${window.NetMonitor ? window.NetMonitor.badgeHtml() : `<span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">Connection: ${navigator.onLine ? "normal" : "terputus"}</span>`}
               <span class="pill" style="background:#f1f5f9;color:var(--primary);">${idx + (evaluated ? 1 : 0)} of ${items.length} Questions</span>
               <div class="timer-pill" id="capTimer">30:00</div>
             </div>
@@ -1877,7 +1877,9 @@
     }
 
     function draw() {
-      const connPill = `<span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">📶 Connection: ${navigator.onLine ? "normal" : "terputus"}</span>`;
+      const connPill = window.NetMonitor
+        ? window.NetMonitor.badgeHtml()
+        : `<span class="pill ${navigator.onLine ? "pill-green" : "pill-red"}" style="border:1px solid currentColor;">Connection: ${navigator.onLine ? "normal" : "terputus"}</span>`;
 
       if (oceanPhase === "welcome") {
         root.innerHTML = `

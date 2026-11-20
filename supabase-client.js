@@ -413,4 +413,88 @@
       } catch {}
     }
   };
+
+  // ======================== REAL-TIME NETWORK SPEED & LATENCY MONITOR ========================
+  const netState = {
+    cls: navigator.onLine ? "pill-green" : "pill-red",
+    label: navigator.onLine ? "Connection: Mengukur..." : "Connection: Terputus",
+    rttMs: null,
+    detail: ""
+  };
+
+  const wifiSvg = `<svg class="lucide-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>`;
+
+  function syncConnBadges() {
+    document.querySelectorAll(".live-conn-badge").forEach((el) => {
+      el.className = `pill live-conn-badge ${netState.cls}`;
+      el.title = netState.detail || netState.label;
+      el.innerHTML = `${wifiSvg} <span>${netState.label}</span>`;
+    });
+  }
+
+  async function measureNetwork() {
+    if (!navigator.onLine) {
+      netState.cls = "pill-red";
+      netState.label = "Connection: Terputus (Offline)";
+      netState.rttMs = null;
+      netState.detail = "Perangkat tidak terhubung ke jaringan internet.";
+      syncConnBadges();
+      return;
+    }
+
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const effType = conn && conn.effectiveType ? conn.effectiveType.toUpperCase() : "";
+    const downlink = conn && typeof conn.downlink === "number" ? conn.downlink : null;
+
+    const controller = new AbortController();
+    const tOut = setTimeout(() => controller.abort(), 4000);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/app_users?select=id&limit=1`, {
+        method: "HEAD",
+        cache: "no-store",
+        signal: controller.signal,
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      clearTimeout(tOut);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const rtt = Math.max(1, Math.round(performance.now() - t0));
+      netState.rttMs = rtt;
+      const netTag = effType ? ` • ${effType}` : "";
+      const mbpsTag = downlink !== null ? ` (~${downlink} Mbps)` : "";
+      netState.detail = `Latensi ping nyata ke server: ${rtt} ms${netTag}${mbpsTag}`;
+
+      if (rtt > 900 || effType === "2G" || effType === "SLOW-2G") {
+        netState.cls = "pill-red";
+        netState.label = `Connection: Sangat Lambat (${rtt} ms${netTag})`;
+      } else if (rtt >= 350 || effType === "3G" || (downlink !== null && downlink > 0 && downlink < 1.5)) {
+        netState.cls = "pill-amber";
+        netState.label = `Connection: Lambat (${rtt} ms${netTag})`;
+      } else {
+        netState.cls = "pill-green";
+        netState.label = `Connection: Normal (${rtt} ms${netTag})`;
+      }
+    } catch {
+      clearTimeout(tOut);
+      netState.cls = "pill-red";
+      netState.label = "Connection: Terputus / Timeout";
+      netState.detail = "Tidak dapat menjangkau server dalam 4 detik.";
+    }
+    syncConnBadges();
+  }
+
+  window.NetMonitor = {
+    badgeHtml() {
+      return `<span class="pill live-conn-badge ${netState.cls}" style="border:1px solid currentColor;display:inline-flex;align-items:center;gap:5px;" title="${netState.detail || netState.label}">${wifiSvg} <span>${netState.label}</span></span>`;
+    },
+    refresh: measureNetwork
+  };
+
+  window.addEventListener("online", measureNetwork);
+  window.addEventListener("offline", measureNetwork);
+  measureNetwork();
+  setInterval(measureNetwork, 6000);
 })();
