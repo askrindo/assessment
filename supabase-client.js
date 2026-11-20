@@ -445,14 +445,30 @@
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const effType = conn && conn.effectiveType ? conn.effectiveType.toUpperCase() : "";
     const downlink = conn && typeof conn.downlink === "number" ? conn.downlink : null;
+    const netTag = effType ? ` • ${effType}` : "";
+    const mbpsTag = downlink !== null ? ` (~${downlink} Mbps)` : "";
+
+    const applyRtt = (rtt) => {
+      netState.rttMs = rtt;
+      netState.detail = `Latensi ping nyata ke server: ${rtt} ms${netTag}${mbpsTag}`;
+      if (rtt > 1200 || effType === "2G" || effType === "SLOW-2G") {
+        netState.cls = "pill-red";
+        netState.label = `Connection: Sangat Lambat (${rtt} ms${netTag})`;
+      } else if (rtt >= 450 || effType === "3G" || (downlink !== null && downlink > 0 && downlink < 1.5)) {
+        netState.cls = "pill-amber";
+        netState.label = `Connection: Lambat (${rtt} ms${netTag})`;
+      } else {
+        netState.cls = "pill-green";
+        netState.label = `Connection: Normal (${rtt} ms${netTag})`;
+      }
+    };
 
     const controller = new AbortController();
-    const tOut = setTimeout(() => controller.abort(), 4000);
+    const tOut = setTimeout(() => controller.abort(), 8000);
     const t0 = performance.now();
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/app_users?select=id&limit=1`, {
-        method: "HEAD",
-        cache: "no-store",
+        method: "GET",
         signal: controller.signal,
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -461,27 +477,27 @@
       });
       clearTimeout(tOut);
       if (!res.ok) throw new Error("HTTP " + res.status);
-      const rtt = Math.max(1, Math.round(performance.now() - t0));
-      netState.rttMs = rtt;
-      const netTag = effType ? ` • ${effType}` : "";
-      const mbpsTag = downlink !== null ? ` (~${downlink} Mbps)` : "";
-      netState.detail = `Latensi ping nyata ke server: ${rtt} ms${netTag}${mbpsTag}`;
-
-      if (rtt > 900 || effType === "2G" || effType === "SLOW-2G") {
-        netState.cls = "pill-red";
-        netState.label = `Connection: Sangat Lambat (${rtt} ms${netTag})`;
-      } else if (rtt >= 350 || effType === "3G" || (downlink !== null && downlink > 0 && downlink < 1.5)) {
-        netState.cls = "pill-amber";
-        netState.label = `Connection: Lambat (${rtt} ms${netTag})`;
-      } else {
-        netState.cls = "pill-green";
-        netState.label = `Connection: Normal (${rtt} ms${netTag})`;
-      }
+      applyRtt(Math.max(1, Math.round(performance.now() - t0)));
     } catch {
       clearTimeout(tOut);
-      netState.cls = "pill-red";
-      netState.label = "Connection: Terputus / Timeout";
-      netState.detail = "Tidak dapat menjangkau server dalam 4 detik.";
+      // Fallback: cek ping ke host halaman sendiri atau gunakan RTT dari browser jika online
+      try {
+        const t1 = performance.now();
+        const fRes = await fetch(window.location.href.split("#")[0], { method: "GET", cache: "no-store" });
+        if (fRes.ok) {
+          applyRtt(Math.max(1, Math.round(performance.now() - t1)));
+          syncConnBadges();
+          return;
+        }
+      } catch {}
+
+      if (conn && typeof conn.rtt === "number" && conn.rtt > 0) {
+        applyRtt(conn.rtt);
+      } else {
+        netState.cls = "pill-amber";
+        netState.label = `Connection: Tidak Stabil${netTag}`;
+        netState.detail = "Jaringan perangkat aktif namun respon server lambat/terhambat.";
+      }
     }
     syncConnBadges();
   }
@@ -496,5 +512,5 @@
   window.addEventListener("online", measureNetwork);
   window.addEventListener("offline", measureNetwork);
   measureNetwork();
-  setInterval(measureNetwork, 6000);
+  setInterval(measureNetwork, 10000);
 })();
